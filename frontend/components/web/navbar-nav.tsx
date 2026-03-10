@@ -90,8 +90,8 @@ const demoData = {
     { name: "Sitemap", url: "/sitemap" },
   ],
   auth: {
-    login: { text: "Login", url: "/login" },
-    signup: { text: "Sign up", url: "/signup" },
+    login: { text: "Login", url: "auth/login" },
+    signup: { text: "Sign up", url: "auth/signup" },
   },
 };
 

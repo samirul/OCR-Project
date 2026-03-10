@@ -5,7 +5,7 @@ export default function Home() {
   
   return (
     <div>
-      <h1>HIIIII</h1>
+      <h1>Index page</h1>
     </div>
   );
 }
