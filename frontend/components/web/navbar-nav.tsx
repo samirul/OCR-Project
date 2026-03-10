@@ -3,7 +3,7 @@ import { Navbar } from "./navbar";
 
 const demoData = {
   logo: {
-    url: "https://www.shadcnblocks.com",
+    url: "#",
     src: "https://www.shadcnblocks.com/images/block/block-1.svg",
     alt: "blocks for shadcn/ui",
     title: "Shadcnblocks.com",
@@ -11,7 +11,7 @@ const demoData = {
   menu: [
     {
       title: "Home",
-      url: "https://www.shadcnblocks.com",
+      url: "#",
     },
     {
       title: "Products",

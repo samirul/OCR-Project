@@ -5,7 +5,6 @@ export default function Home() {
   
   return (
     <div>
-      <NavbarNav />
       <h1>HIIIII</h1>
     </div>
   );

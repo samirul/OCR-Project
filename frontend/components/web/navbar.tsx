@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/sheet";
 import { JSX } from "react";
 import Link from "next/link";
+import { ThemeToggle } from "./theme-toggle";
 
 interface MenuItem {
   title: string;
@@ -59,10 +60,10 @@ interface NavbarProps {
 
 const Navbar = ({
   logo = {
-    url: "https://www.shadcnblocks.com",
+    url: "#",
     src: "https://www.shadcnblocks.com/images/block/block-1.svg",
     alt: "logo",
-    title: "Shadcnblocks.com",
+    title: "#",
   },
   menu = [
     { title: "Home", url: "#" },
@@ -149,7 +150,7 @@ const Navbar = ({
 }: NavbarProps) => {
   return (
     <section className="py-4">
-      <div className="container">
+      <div className="container mx-auto px-4 lg:px-8">
         <nav className="hidden justify-between lg:flex">
           <div className="flex items-center gap-6">
             <Link href={logo.url} className="flex items-center gap-2">
@@ -165,6 +166,7 @@ const Navbar = ({
             </div>
           </div>
           <div className="flex gap-2">
+            <ThemeToggle />
             <Button asChild variant="outline" size="sm">
               <Link href={auth.login.url}>{auth.login.text}</Link>
             </Button>
@@ -218,6 +220,7 @@ const Navbar = ({
                     </div>
                   </div>
                   <div className="flex flex-col gap-3">
+                    <ThemeToggle />  
                     <Button asChild variant="outline">
                       <Link href={auth.login.url}>{auth.login.text}</Link>
                     </Button>
