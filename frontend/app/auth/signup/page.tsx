@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FcGoogle } from "react-icons/fc";
+import { FaGithub } from "react-icons/fa";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -72,10 +73,10 @@ export default function SignUpPage() {
           </Button>
         </CardAction>
         <Button variant="outline" className="w-full cursor-pointer">
-          Signup with Google
+          <FcGoogle className="relative right-2 size-5" />Login with Google
         </Button>
         <Button variant="outline" className="w-full cursor-pointer">
-          Signup with Github
+          <FaGithub className="relative right-2 size-5" />Login with Github
         </Button>
       </CardFooter>
     </Card>
