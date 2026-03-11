@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,10 +13,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 
 
 export default function LoginPage() {
+  const router = useRouter();
+  // Redirect to signup page if user want to register first.
+  function redirectToSignUpPage() {
+    router.push("/auth/signup");
+  }
   return (
     <Card className="w-full max-w-md shadow-lg">
       <CardHeader>
@@ -55,7 +63,7 @@ export default function LoginPage() {
           Login
         </Button>
         <CardAction>
-          <Button className="cursor-pointer text-black dark:text-white" variant="link">Create your account?</Button>
+          <Button className="cursor-pointer text-black dark:text-white" onClick={redirectToSignUpPage} variant="link">Create your account?</Button>
         </CardAction>
         <Button variant="outline" className="w-full cursor-pointer">
           Login with Google
