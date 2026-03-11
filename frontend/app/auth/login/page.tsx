@@ -57,7 +57,7 @@ export default function LoginPage() {
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <FieldGroup className="gap-y-4">
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-5">
               <div className="grid gap-2">
                 <Controller
                   name="email"
