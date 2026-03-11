@@ -10,14 +10,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema } from "@/app/schemas/auth";
 import { useRouter } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
-
-
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,53 +32,106 @@ export default function LoginPage() {
   function redirectToSignUpPage() {
     router.push("/auth/signup");
   }
+  const form = useForm({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  function onSubmit() {
+    console.log("login success");
+  }
+
   return (
-    <Card className="w-full max-w-md shadow-lg">
+    <Card className="w-full max-w-md shadow-lg lg:mt-0 md:mt-0 mt-14">
       <CardHeader>
-        <CardTitle className="text-4xl font-extrabold text-center mb-2">Login</CardTitle>
+        <CardTitle className="text-4xl font-extrabold text-center mb-2">
+          Login
+        </CardTitle>
         <CardDescription className="text-center">
           Authentication credential are required
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form>
-          <div className="flex flex-col gap-6">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  href="#"
-                  className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                >
-                  Forgot your password?
-                </Link>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <FieldGroup className="gap-y-4">
+            <div className="flex flex-col gap-2">
+              <div className="grid gap-2">
+                <Controller
+                  name="email"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field>
+                      <FieldLabel>Email</FieldLabel>
+                      <Input
+                        aria-invalid={fieldState.invalid}
+                        placeholder="john@doe.com"
+                        {...field}
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
               </div>
-              <Input id="password" type="password" required />
+              <div className="grid gap-2">
+                <div className="flex items-center">
+                  <Label htmlFor="password">Password</Label>
+                  <Link
+                    href="#"
+                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
+                <Controller
+                  name="password"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field>
+                      <Input
+                        aria-invalid={fieldState.invalid}
+                        placeholder=""
+                        type="password"
+                        {...field}
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+              </div>
             </div>
-          </div>
+            <Button type="submit" className="w-full cursor-pointer">
+              Login
+            </Button>
+          </FieldGroup>
         </form>
       </CardContent>
       <CardFooter className="flex-col gap-2">
-        <Button type="submit" className="w-full cursor-pointer">
+        {/* <Button type="submit" className="w-full cursor-pointer">
           Login
-        </Button>
+        </Button> */}
         <CardAction>
-          <Button className="cursor-pointer text-black dark:text-white" onClick={redirectToSignUpPage} variant="link">Create your account?</Button>
+          <Button
+            className="cursor-pointer text-black dark:text-white"
+            onClick={redirectToSignUpPage}
+            variant="link"
+          >
+            Create your account?
+          </Button>
         </CardAction>
         <Button variant="outline" className="w-full cursor-pointer">
-          <FcGoogle className="relative right-2 size-5" />Login with Google
+          <FcGoogle className="relative right-2 size-5" />
+          Login with Google
         </Button>
         <Button variant="outline" className="w-full cursor-pointer">
-          <FaGithub className="relative right-2 size-5" />Login with Github
+          <FaGithub className="relative right-2 size-5" />
+          Login with Github
         </Button>
       </CardFooter>
     </Card>
