@@ -1,5 +1,4 @@
 "use client";
-
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -113,9 +112,6 @@ export default function LoginPage() {
         </form>
       </CardContent>
       <CardFooter className="flex-col gap-2">
-        {/* <Button type="submit" className="w-full cursor-pointer">
-          Login
-        </Button> */}
         <CardAction>
           <Button
             className="cursor-pointer text-black dark:text-white"
