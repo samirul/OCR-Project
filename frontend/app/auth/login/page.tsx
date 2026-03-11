@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FcGoogle } from "react-icons/fc";
+import { FaGithub } from "react-icons/fa";
 
 
 
@@ -66,10 +68,10 @@ export default function LoginPage() {
           <Button className="cursor-pointer text-black dark:text-white" onClick={redirectToSignUpPage} variant="link">Create your account?</Button>
         </CardAction>
         <Button variant="outline" className="w-full cursor-pointer">
-          Login with Google
+          <FcGoogle className="relative right-2 size-5" />Login with Google
         </Button>
         <Button variant="outline" className="w-full cursor-pointer">
-          Login with Github
+          <FaGithub className="relative right-2 size-5" />Login with Github
         </Button>
       </CardFooter>
     </Card>
