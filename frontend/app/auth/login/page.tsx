@@ -21,6 +21,7 @@ import Link from "next/link";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema } from "@/app/schemas/auth";
+import GoogleLoginAuth from '@/components/auth/google-auth';
 import { useRouter } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
@@ -42,6 +43,8 @@ export default function LoginPage() {
   function onSubmit() {
     console.log("login success");
   }
+  //Get login function for google login.
+  const { login } = GoogleLoginAuth();
 
   return (
     <Card className="w-full max-w-md shadow-lg lg:mt-0 md:mt-0 mt-14">
@@ -121,7 +124,7 @@ export default function LoginPage() {
             Create your account?
           </Button>
         </CardAction>
-        <Button variant="outline" className="w-full cursor-pointer">
+          <Button variant="outline" className="w-full cursor-pointer" onClick={() => login()}>
           <FcGoogle className="relative right-2 size-5" />
           Login with Google
         </Button>
