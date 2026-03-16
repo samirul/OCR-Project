@@ -31,6 +31,6 @@ def deploy_checker_pydantic_settings():
         str: The filename of the environment file for the current deployment.
     """
     return ('.env.prod'
-            if DEPLOYMENT_TYPE in {'prod', 'production'}
-            else '.env.local'
+        if DEPLOYMENT_TYPE in {'prod', 'production'}
+        else '.env.local'
     )
