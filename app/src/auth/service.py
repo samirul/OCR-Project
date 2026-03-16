@@ -1,18 +1,10 @@
 """Business logics for all type authentications"""
-import os
+
 import json
 from authlib.integrations.starlette_client import OAuth
-from starlette.config import Config
+from app.core.deploy_checker import deploy_checker
 
-# Configs for production or local dev env.
-DEPLOYMENT_TYPE = str(os.environ.get("DEPLOYMENT_ENV")).lower()
-
-# Check for deployment type(Either production or local dev)
-if DEPLOYMENT_TYPE in {'prod', 'production'}:
-    config = Config(env_file='.env.prod')
-else:
-    config = Config(env_file='.env.local')
-
+config = deploy_checker()
 oauth = OAuth(config=config)
 
 def google_auth_configs():
