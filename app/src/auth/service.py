@@ -2,9 +2,9 @@
 
 import json
 from authlib.integrations.starlette_client import OAuth
-from app.core.deploy_checker import deploy_checker
+from app.core.deploy_checker import deploy_checker_auth_services
 
-config = deploy_checker()
+config = deploy_checker_auth_services()
 oauth = OAuth(config=config)
 
 def google_auth_configs():
