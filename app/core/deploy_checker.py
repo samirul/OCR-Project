@@ -20,3 +20,17 @@ def deploy_checker_auth_services():
         if DEPLOYMENT_TYPE in {'prod', 'production'}
         else Config(env_file='.env.local')
     )
+
+def deploy_checker_pydantic_settings():
+    """Get the environment file path for Pydantic settings.
+
+    This function checks the current deployment type and returns the name of
+    the environment file that should be used for loading Pydantic settings.
+
+    Returns:
+        str: The filename of the environment file for the current deployment.
+    """
+    return ('.env.prod'
+            if DEPLOYMENT_TYPE in {'prod', 'production'}
+            else '.env.local'
+    )
