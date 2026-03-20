@@ -11,10 +11,10 @@ from app.db.session import get_db
 
 config = deploy_checker_auth_services()
 logger = logging.getLogger(__name__)
-router_v1 = APIRouter()
+router_auth = APIRouter()
 
 
-@router_v1.post('login/google')
+@router_auth.post('login/google')
 async def google_login(body: GoogleAuthCode, db: Session = Depends(get_db)):
     """Handle user login via Google OAuth and create or update the user in the system.
 
