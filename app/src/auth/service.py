@@ -131,7 +131,7 @@ def extract_user_info_from_id_token(id_info: Mapping[str, object]) -> dict[str, 
         dict[str, object]: A mapping of user attributes derived from the ID token.
     """
     return {
-        "sub": id_info["sub"],  # Google's unique id for user.
+        # "sub": id_info["sub"],  # Google's unique id for user.
         "email": id_info["email"],
         "name": id_info.get("name"),
         "picture": id_info.get("picture"),
