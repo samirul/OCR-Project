@@ -8,6 +8,7 @@ from google_auth_oauthlib.flow import Flow
 from app.core.deploy_checker import deploy_checker_auth_services
 from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut, UserPayload
 from app.core.security import create_access_token, verify_token
+from app.exceptions.exception import jwt_token_invalid_exception
 
 config = deploy_checker_auth_services()
 
@@ -88,20 +89,26 @@ def verify_google_token(token: str) -> Mapping[str, object]:
 )
 
 def exchange_auth_code_for_token(code: str):
-    """Exchanges a Google authorization code for OAuth credentials. This completes the OAuth code grant step and returns the resulting credential object.
+    """Exchanges a Google authorization code for OAuth credentials. This function performs the token retrieval step in the Google OAuth flow using the provided code.
 
-    The function initializes a Google OAuth flow, performs the token exchange, and exposes the acquired credentials for further use.
+    If the exchange fails for any reason, a standardized token invalidity exception is raised.
 
     Args:
-        code: The authorization code received from Google's OAuth callback.
+        code: The short-lived authorization code received from Google's OAuth redirect.
 
     Returns:
-        Credentials: The Google OAuth credentials obtained from the authorization code.
+        Any: The credential object obtained from the Google OAuth flow.
+
+    Raises:
+        HTTPException: If the authorization code cannot be exchanged for valid credentials or invalid, missing code.
     """
-    flow = google_flow()
-    flow.fetch_token(code=code)
-    credentials = flow.credentials
-    return credentials
+    try:
+        flow = google_flow()
+        flow.fetch_token(code=code)
+        credentials = flow.credentials
+        return credentials
+    except Exception as exc:
+        raise jwt_token_invalid_exception() from exc
 
 def validate_google_audience_and_email(id_info: Mapping[str, object], data: dict[str, str]):
     """Validates that a Google ID token is intended for this client and that the user's email is verified. This ensures only trusted and verified Google accounts can proceed.

@@ -15,6 +15,20 @@ def jwt_validation_error_exception():
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+def jwt_token_invalid_exception():
+    """Creates an HTTP exception for invalid, expired, or missing tokens. This helper standardizes the error response when token-related validation fails.
+
+    The returned exception uses a 400 Bad Request status and includes the standard WWW-Authenticate header for Bearer tokens.
+
+    Returns:
+        HTTPException: An exception configured for token invalidity or expiration errors.
+    """
+    return HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Token is invalid or expired or not found.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
 def check_valid_uuid(ids: str):
     """Validates that a given string is a properly formatted UUID. This helper ensures identifiers conform to UUID standards before they are used in the system.
 

@@ -3,6 +3,7 @@
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from app.exceptions.exception import jwt_token_invalid_exception
 from app.src.auth.service import validate_google_token_and_extract_user_info, return_tokens_and_credentials
 from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut
 from app.core.deploy_checker import deploy_checker_auth_services
@@ -16,18 +17,19 @@ router_auth = APIRouter()
 
 @router_auth.post('login/google', response_model=GoogleLoginResponseOut)
 async def google_login(body: GoogleAuthCode, db: Session = Depends(get_db)):
-    """Handle user login via Google OAuth and create or update the user in the system.
+    """Handles Google OAuth login and returns authentication tokens for the user. This endpoint validates the Google token, persists or updates the user, and issues application-specific JWTs.
 
-    This endpoint validates the provided Google authorization code, extracts user data,
-    and persists the user information in the database if authentication is successful.
+    The function orchestrates token verification, user lookup or creation, and token generation, while converting any validation or unexpected errors into HTTP-friendly responses.
 
     Args:
-        body: The payload containing the Google authorization code to be validated.
-        db: The database session dependency used for persisting user data.
+        body: The request payload containing the Google authorization code.
+        db: The database session used to fetch or create the user record.
+
+    Returns:
+        GoogleLoginResponseOut: The access token response along with basic user identity payload.
 
     Raises:
-        HTTPException: Raised with a 401 status code if token verification fails, or
-            with a 500 status code if an unexpected authentication error occurs.
+        HTTPException: If Google token verification fails or a token-related error occurs.
     """
     try:
         user = validate_google_token_and_extract_user_info(body)
@@ -37,4 +39,4 @@ async def google_login(body: GoogleAuthCode, db: Session = Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=401, detail=f"Token verification failed: {str(e)}") from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Authentication error: {str(e)}") from e
+        raise jwt_token_invalid_exception() from e
