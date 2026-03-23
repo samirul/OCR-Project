@@ -3,7 +3,6 @@
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from app.exceptions.exception import jwt_token_invalid_exception
 from app.src.auth.service import validate_google_token_and_extract_user_info, return_tokens_and_credentials
 from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut
 from app.core.deploy_checker import deploy_checker_auth_services
@@ -39,4 +38,4 @@ async def google_login(body: GoogleAuthCode, db: Session = Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=401, detail=f"Token verification failed: {str(e)}") from e
     except Exception as e:
-        raise jwt_token_invalid_exception() from e
+        raise HTTPException(status_code=400, detail=f"Token is invalid or expired {str(e)}") from e
