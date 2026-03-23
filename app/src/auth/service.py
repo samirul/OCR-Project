@@ -183,5 +183,5 @@ async def return_tokens_and_credentials(data: dict) -> GoogleLoginResponseOut:
     return GoogleLoginResponseOut(
         access_token=access_token,
         refresh_token="",
-        payload=UserPayload(id=payload_data.id, email=payload_data.email)
+        user=UserPayload(id=payload_data.id, email=payload_data.email)
     )

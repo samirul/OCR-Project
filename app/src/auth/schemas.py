@@ -46,7 +46,7 @@ class GoogleLoginResponseOut(BaseModel):
     """
     access_token: str
     refresh_token: str
-    payload: UserPayload
+    user: UserPayload
     class Config:
         """Pydantic configuration for the GoogleLoginResponseOut model. This configuration defines how the response model can be populated from underlying data objects.
 
