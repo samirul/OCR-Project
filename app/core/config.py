@@ -26,3 +26,22 @@ class DatabaseSettings(BaseSettings):
     database_username: str
 
 database_configs_settings = DatabaseSettings() # type: ignore
+
+
+class JWTSettings(BaseSettings):
+    """JWT configuration settings.
+
+    This class loads JWT-related settings from environment variables and provides
+    them as strongly-typed attributes for the application.
+
+    Attributes:
+        jwt_secret_key (str): Secret key used to sign JWT tokens.
+        jwt_algorithm (str): Algorithm used to sign JWT tokens.
+        jwt_expiration_seconds (int): Expiration time for JWT tokens in seconds.
+    """
+    model_config = SettingsConfigDict(env_file=str(ENV_FILE), extra='ignore')
+    secret_key: str
+    jwt_algorithm: str
+    jwt_expiration_minutes: int
+
+jwt_configs_settings = JWTSettings() # type: ignore

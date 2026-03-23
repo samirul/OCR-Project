@@ -6,7 +6,8 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 from google_auth_oauthlib.flow import Flow
 from app.core.deploy_checker import deploy_checker_auth_services
-from app.src.auth.schemas import GoogleAuthCode
+from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut, UserPayload
+from app.core.security import create_access_token, verify_token
 
 config = deploy_checker_auth_services()
 
@@ -153,3 +154,22 @@ def validate_google_token_and_extract_user_info(body: GoogleAuthCode) -> dict[st
     id_info = verify_google_token(credentials.id_token) # type: ignore
     validate_google_audience_and_email(id_info=id_info, data=data)
     return extract_user_info_from_id_token(id_info=id_info)
+
+async def return_tokens_and_credentials(data: dict) -> GoogleLoginResponseOut:
+    """Generates an access token for a Google-authenticated user and returns it with basic user payload. This helper wraps token creation and verification into a single response builder.
+
+    The function signs the provided data into a JWT, validates the resulting token, and embeds the derived user identifier and email in the response payload.
+
+    Args:
+        data: A dictionary containing user-related data to be encoded into the access token.
+
+    Returns:
+        GoogleLoginResponseOut: An object containing the access token, an empty refresh token, and a user payload with ID and email.
+    """
+    access_token = create_access_token(data)
+    payload_data = verify_token(access_token)
+    return GoogleLoginResponseOut(
+        access_token=access_token,
+        refresh_token="",
+        payload=UserPayload(id=payload_data.id, email=payload_data.email)
+    )
