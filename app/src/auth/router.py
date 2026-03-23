@@ -1,7 +1,7 @@
 """Router for social authentication and authentication"""
 
 import logging
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter,Depends
 from sqlalchemy.orm import Session
 from app.src.auth.service import validate_google_token_and_extract_user_info, return_tokens_and_credentials
 from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut
@@ -30,12 +30,7 @@ async def google_login(body: GoogleAuthCode, db: Session = Depends(get_db)):
     Raises:
         HTTPException: If Google token verification fails or a token-related error occurs.
     """
-    try:
-        user = validate_google_token_and_extract_user_info(body)
-        serialized_data = get_user_data_from_oauth_google(user)
-        data = await create_user_oauth(serialized_data, db)
-        return await return_tokens_and_credentials({"id": str(data.id), "email": str(data.email)})
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=f"Token verification failed: {str(e)}") from e
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Token is invalid or expired {str(e)}") from e
+    user = validate_google_token_and_extract_user_info(body)
+    serialized_data = get_user_data_from_oauth_google(user)
+    data = await create_user_oauth(serialized_data, db)
+    return await return_tokens_and_credentials({"id": str(data.id), "email": str(data.email)})

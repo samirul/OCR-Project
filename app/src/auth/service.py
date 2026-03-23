@@ -5,9 +5,11 @@ from fastapi import HTTPException
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from google_auth_oauthlib.flow import Flow
+from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
 from app.core.deploy_checker import deploy_checker_auth_services
 from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut, UserPayload
 from app.core.security import create_access_token, verify_token
+from app.exceptions.exception import google_token_invalid_exception, google_token_not_provided_exception
 
 config = deploy_checker_auth_services()
 
@@ -88,20 +90,30 @@ def verify_google_token(token: str) -> Mapping[str, object]:
 )
 
 def exchange_auth_code_for_token(code: str):
-    """Exchanges a Google authorization code for OAuth credentials. This completes the OAuth code grant step and returns the resulting credential object.
+    """Exchanges a Google authorization code for OAuth credentials. This function performs the token retrieval step in the Google OAuth flow using the provided code.
 
-    The function initializes a Google OAuth flow, performs the token exchange, and exposes the acquired credentials for further use.
+    When the exchange fails due to grant issues or configuration errors, it raises standardized Google token exceptions for consistent error handling.
 
     Args:
-        code: The authorization code received from Google's OAuth callback.
+        code: The short-lived authorization code received from Google's OAuth redirect.
 
     Returns:
         Credentials: The Google OAuth credentials obtained from the authorization code.
+
+    Raises:
+        HTTPException: If the authorization code is invalid, expired, reused, or the client configuration is incorrect.
     """
-    flow = google_flow()
-    flow.fetch_token(code=code)
-    credentials = flow.credentials
-    return credentials
+    try:
+        flow = google_flow()
+        flow.fetch_token(code=code)
+        credentials = flow.credentials
+        return credentials
+    except InvalidGrantError as e:
+        # Auth code expired, already used
+        raise google_token_invalid_exception() from e
+    except ValueError as e:
+        # Invalid client configuration or other issues
+        raise google_token_not_provided_exception() from e
 
 def validate_google_audience_and_email(id_info: Mapping[str, object], data: dict[str, str]):
     """Validates that a Google ID token is intended for this client and that the user's email is verified. This ensures only trusted and verified Google accounts can proceed.
