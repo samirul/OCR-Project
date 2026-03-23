@@ -19,15 +19,30 @@ def commit_to_db(db: Session, model_instance: User):
     db.commit()
     db.refresh(model_instance)
 
+def check_user_oauth(db: Session, new_user: User):
+    """Look up an existing user by email for OAuth-based authentication.
+
+    This helper checks whether a user with the given email already exists and
+    returns the matching user instance if found.
+
+    Args:
+        db: The active database session used to query user records.
+        new_user: The user instance whose email is used for the lookup.
+
+    Returns:
+        User | None: The existing user with the same email, or None if no match is found.
+    """
+    return db.scalars(select(User).where(User.email == new_user.email)).first()
+
 def check_user(db: Session, new_user: User):
-    """Ensure that a user's email address is unique before creating a new user.
+    """Ensure that a user's email address is unique before creation.
 
     This function queries the database for an existing user with the same email
-    and prevents creation if a conflict is detected.
+    and blocks the operation if a duplicate is found.
 
     Args:
         db: The active database session used to perform the lookup.
-        new_user: The user instance whose email address should be validated.
+        new_user: The user instance whose email should be validated for uniqueness.
 
     Raises:
         HTTPException: Raised with a 403 status code if a user with the same email
@@ -36,7 +51,7 @@ def check_user(db: Session, new_user: User):
     user = db.scalars(select(User).where(User.email == new_user.email)).first()
     if user is not None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{new_user.email} already exists.")
-    
+
 
 def check_user_id(db: Session, new_user: User):
     """Validate that a user ID is unique before creating a new user.
@@ -76,25 +91,22 @@ def get_user_data_from_oauth_google(data: dict) -> UserCreate:
     )
 
 async def create_user_oauth(user: UserCreate, db: Session):
-    """Create a new user record from OAuth-provided data. 
+    """Create or retrieve a user based on Google OAuth data.
 
-    This function validates the uniqueness of the user, persists the new user in
-    the database, and returns the created user instance.
+    This function ensures that a user backed by Google OAuth exists by
+    either returning an existing record or creating a new active user.
 
     Args:
-        user: The user data constructed from the OAuth provider payload.
-        db: The database session used to query and persist user records.
+        user: The user creation schema populated from Google OAuth data.
+        db: The active database session used to query and persist user records.
 
     Returns:
-        User: The newly created and persisted user model instance.
-
-    Raises:
-        HTTPException: Raised with a 403 status code if a user with the same email
-            or ID already exists in the system.
+        User: The existing or newly created user associated with the OAuth data.
     """
     new_user = User(**user.model_dump())
     new_user.is_active = True
-    check_user(db,new_user)
-    check_user_id(db,new_user)
-    commit_to_db(db,new_user)
-    return new_user
+    user = check_user_oauth(db,new_user)
+    if not user:
+        commit_to_db(db,new_user)
+        return new_user
+    return user
