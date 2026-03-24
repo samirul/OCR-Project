@@ -1,7 +1,7 @@
 """Router for social authentication and authentication"""
 
 import logging
-from fastapi import APIRouter,Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 from app.src.auth.service import validate_google_token_and_extract_user_info, return_tokens_and_credentials
 from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut
@@ -15,7 +15,7 @@ router_auth = APIRouter()
 
 
 @router_auth.post('/login/google', response_model=GoogleLoginResponseOut)
-async def google_login(body: GoogleAuthCode, db: Session = Depends(get_db)):
+async def google_login(response: Response, body: GoogleAuthCode, db: Session = Depends(get_db)):
     """Handles Google OAuth login and returns authentication tokens for the user. This endpoint validates the Google token, persists or updates the user, and issues application-specific JWTs.
 
     The function orchestrates token verification, user lookup or creation, and token generation, while converting any validation or unexpected errors into HTTP-friendly responses.
@@ -33,4 +33,6 @@ async def google_login(body: GoogleAuthCode, db: Session = Depends(get_db)):
     user = validate_google_token_and_extract_user_info(body)
     serialized_data = get_user_data_from_oauth_google(user)
     data = await create_user_oauth(serialized_data, db)
-    return await return_tokens_and_credentials({"id": str(data.id), "email": str(data.email)})
+    return await return_tokens_and_credentials(
+        response= response, data={"id": str(data.id), "email": str(data.email)}
+    )

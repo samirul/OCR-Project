@@ -8,7 +8,7 @@ from google_auth_oauthlib.flow import Flow
 from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
 from app.core.deploy_checker import deploy_checker_auth_services
 from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut, UserPayload
-from app.core.security import create_access_token, verify_token
+from app.core.security import create_access_token, create_refresh_token, save_tokens_in_http_only_cookie, verify_token
 from app.exceptions.exception import google_token_invalid_exception, google_token_not_provided_exception
 
 config = deploy_checker_auth_services()
@@ -167,7 +167,38 @@ def validate_google_token_and_extract_user_info(body: GoogleAuthCode) -> dict[st
     validate_google_audience_and_email(id_info=id_info, data=data)
     return extract_user_info_from_id_token(id_info=id_info)
 
-async def return_tokens_and_credentials(data: dict) -> GoogleLoginResponseOut:
+
+
+def generate_tokens_in_http_only_cookies(response, data: dict):
+    """Creates access and refresh tokens and stores them in HTTP-only cookies. This helper centralizes JWT generation and secure cookie handling for authenticated users.
+
+    The function signs the provided data into tokens, verifies the access token payload, and attaches both tokens to the response as HTTP-only cookies.
+
+    Args:
+        response: The HTTP response object that will be modified to include the cookies.
+        data: A dictionary of user-related claims to embed in the JWTs.
+
+    Returns:
+        tuple[str, str, Mapping[str, object]]: The access token, refresh token, and decoded access token payload.
+    """
+    access_token = create_access_token(data)
+    refresh_token = create_refresh_token(data)
+    payload_data = verify_token(access_token)
+    save_tokens_in_http_only_cookie(
+        response=response,
+        key="access_token",
+        value=access_token
+    )
+    save_tokens_in_http_only_cookie(
+        response=response,
+        key="refresh_token",
+        value=refresh_token,
+        path="/"
+    )
+    return access_token, refresh_token, payload_data
+
+
+async def return_tokens_and_credentials(response, data: dict) -> GoogleLoginResponseOut:
     """Generates an access token for a Google-authenticated user and returns it with basic user payload. This helper wraps token creation and verification into a single response builder.
 
     The function signs the provided data into a JWT, validates the resulting token, and embeds the derived user identifier and email in the response payload.
@@ -178,8 +209,7 @@ async def return_tokens_and_credentials(data: dict) -> GoogleLoginResponseOut:
     Returns:
         GoogleLoginResponseOut: An object containing the access token, an empty refresh token, and a user payload with ID and email.
     """
-    access_token = create_access_token(data)
-    payload_data = verify_token(access_token)
+    access_token, _ ,payload_data = generate_tokens_in_http_only_cookies(response, data)
     return GoogleLoginResponseOut(
         access_token=access_token,
         refresh_token="",

@@ -1,6 +1,8 @@
 """Related to JWT and password logics"""
 
+from typing import Literal
 from datetime import datetime, timedelta, timezone
+from fastapi import Response
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from app.core.config import jwt_configs_settings
@@ -10,6 +12,7 @@ from app.core.schemas import TokenData
 SECRET_KEY = jwt_configs_settings.secret_key
 ALGORITHM = jwt_configs_settings.jwt_algorithm
 ACCESS_TOKEN_EXPIRE_MINUTES = int(jwt_configs_settings.jwt_expiration_minutes)
+SameSitePolicy = Literal["lax", "strict", "none"]
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -69,3 +72,21 @@ def verify_token(token: str) -> TokenData:
         return TokenData(id=ids, email=email)
     except JWTError as exc:
         raise jwt_validation_error_exception() from exc
+    
+def save_tokens_in_http_only_cookie(
+        response: Response,
+        key: str,
+        value: str,
+        secure: bool = True,
+        same_site: SameSitePolicy = "lax", 
+        max_age: int = 900,
+        path: str = "/"):
+    response.set_cookie(
+        key=key,
+        value=value,
+        httponly=True,
+        secure=secure,
+        samesite=same_site,
+        max_age=max_age,
+        path=path, 
+    )
