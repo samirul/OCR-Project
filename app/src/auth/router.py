@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 router_auth = APIRouter()
 
 
-@router_auth.post('login/google', response_model=GoogleLoginResponseOut)
+@router_auth.post('/login/google', response_model=GoogleLoginResponseOut)
 async def google_login(body: GoogleAuthCode, db: Session = Depends(get_db)):
     """Handles Google OAuth login and returns authentication tokens for the user. This endpoint validates the Google token, persists or updates the user, and issues application-specific JWTs.
 
