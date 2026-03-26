@@ -56,3 +56,25 @@ class GoogleLoginResponseOut(BaseModel):
             from_attributes: Allows population of the model from object attributes instead of only dictionaries.
         """
         from_attributes = True
+
+class ResponseTokenOut(BaseModel):
+    """Represents the token pair returned when refreshing or issuing authentication tokens. This model provides a consistent structure for delivering new access tokens and optional refresh tokens to clients.
+
+    The schema is typically used in responses from token refresh endpoints or other authentication flows.
+
+    Attributes:
+        access_token: The JWT or token string granting access to protected resources.
+        refresh_token: The token string that can be used to obtain a new access token, if provided.
+    """
+    access_token: str
+    refresh_token: str
+
+    class Config:
+        """Pydantic configuration for the ResponseTokenOut model. This configuration determines how token response objects are built from underlying data sources.
+
+        The current setup enables constructing the response from ORM-like objects by reading their attributes directly.
+
+        Attributes:
+            from_attributes: Allows population of the model from object attributes instead of only dictionaries.
+        """
+        from_attributes = True

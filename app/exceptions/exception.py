@@ -61,3 +61,31 @@ def check_valid_uuid(ids: str):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid UUID format.",
         ) from e
+    
+def invalid_user_exception():
+    """Creates an HTTP exception indicating that the referenced user is invalid or does not exist. This helper standardizes the response when token data does not match any known user.
+
+    The returned exception uses a 401 Unauthorized status and includes the appropriate WWW-Authenticate header for Bearer tokens.
+
+    Returns:
+        HTTPException: An exception configured for invalid or non-existent user errors.
+    """
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="User doesn't match or doesn't exist.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+def invalid_input_token_submitted():
+    """Creates an HTTP exception for cases where a non-refresh token is submitted to a refresh-only endpoint. This helper standardizes the error response when the token type does not meet the required criteria.
+
+    The returned exception uses a 401 Unauthorized status and includes the appropriate WWW-Authenticate header for Bearer tokens.
+
+    Returns:
+        HTTPException: An exception configured for invalid token type submissions.
+    """
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token should be refresh token only.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )

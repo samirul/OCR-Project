@@ -1,10 +1,11 @@
 """Router for social authentication and authentication"""
 
 import logging
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Response, Request
 from sqlalchemy.orm import Session
+from app.core.security import fetch_new_tokens
 from app.src.auth.service import validate_google_token_and_extract_user_info, return_tokens_and_credentials
-from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut
+from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut, ResponseTokenOut
 from app.core.deploy_checker import deploy_checker_auth_services
 from app.src.users.service import get_user_data_from_oauth_google, create_user_oauth
 from app.db.session import get_db
@@ -36,3 +37,22 @@ async def google_login(response: Response, body: GoogleAuthCode, db: Session = D
     return await return_tokens_and_credentials(
         response= response, data={"id": str(data.id), "email": str(data.email)}
     )
+
+@router_auth.post('/refresh', response_model=ResponseTokenOut)
+async def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
+    """Refreshes the user's access token using a valid refresh token stored in cookies. This endpoint validates the refresh token and issues a new short-lived access token for continued authentication.
+
+    The function reads the refresh token from the incoming request cookies, delegates token validation and rotation to the security layer, and returns an updated access token in the response body.
+
+    Args:
+        request: The incoming HTTP request containing the refresh token cookie.
+        response: The HTTP response object used to update cookies with any new tokens.
+        db: The database session used to validate the user associated with the refresh token.
+
+    Returns:
+        ResponseTokenOut: The refreshed access token, with an empty refresh token field.
+    """
+    token = request.cookies.get("refresh_token")
+    print(token)
+    new_token = fetch_new_tokens(response, db, str(token))
+    return ResponseTokenOut(access_token=new_token, refresh_token="")

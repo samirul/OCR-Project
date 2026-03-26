@@ -181,8 +181,8 @@ def generate_tokens_in_http_only_cookies(response, data: dict):
     Returns:
         tuple[str, str, Mapping[str, object]]: The access token, refresh token, and decoded access token payload.
     """
-    access_token = create_access_token(data)
-    refresh_token = create_refresh_token(data)
+    access_token = create_access_token(data, "access_token")
+    refresh_token = create_refresh_token(data, "refresh_token")
     payload_data = verify_token(access_token)
     save_tokens_in_http_only_cookie(
         response=response,
