@@ -52,6 +52,7 @@ async def refresh_token(request: Request, response: Response, db: Session = Depe
     Returns:
         ResponseTokenOut: The refreshed access token, with an empty refresh token field.
     """
-    token = request.cookies.get("refresh_token")
-    new_token = fetch_new_tokens(response, db, str(token))
+    refresh_token = request.cookies.get("refresh_token")
+    access_token = request.cookies.get("access_token")
+    new_token = fetch_new_tokens(response, db, str(refresh_token), str(access_token))
     return ResponseTokenOut(access_token=new_token, refresh_token="")

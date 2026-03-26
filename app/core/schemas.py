@@ -22,3 +22,10 @@ class TokenData(BaseModel):
         """
         from_attributes = True
 
+class BlackListData(BaseModel):
+    access_token: str
+    refresh_token: str
+
+    class Config:
+        from_attributes = True
+

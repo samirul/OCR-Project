@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from app.core.config import jwt_configs_settings
 from app.exceptions.exception import invalid_input_token_submitted, invalid_user_exception, jwt_validation_error_exception
-from app.core.schemas import TokenData
+from app.core.schemas import BlackListData, TokenData
 from app.src.users.models import User
+from app.src.auth.models import BlackListedTokens
 
 SECRET_KEY = jwt_configs_settings.secret_key
 ALGORITHM = jwt_configs_settings.jwt_algorithm
@@ -156,7 +157,7 @@ def check_validity_of_refresh_token_and_return_token_data(db: Session, token: st
     user = db.scalars(user_query).first()
     if user is None:
         raise invalid_user_exception()
-    return token_data
+    return user
     
 
 def new_tokens_are_generated(data: dict):
@@ -191,22 +192,41 @@ def new_tokens_save_in_http_only_cookie(response: Response, new_access_token, ne
     save_tokens_in_http_only_cookie(response, "refresh_token", new_refresh_token)
 
 
-def fetch_new_tokens(response: Response, db: Session, token: str):
-    """Exchanges a valid refresh token for a new access token and updates client cookies. This function coordinates refresh token validation, token rotation, and cookie management.
+def blacklisting_existing_tokens(db: Session, tokens: BlackListData):
+    """Persists a pair of tokens to the blacklist store. This function ensures that specified access and refresh tokens can no longer be used for authentication.
 
-    The function verifies the submitted refresh token, generates a fresh token pair based on the embedded user identity, stores the new tokens in HTTP-only cookies, and returns the new access token.
+    The function creates a blacklist entry from the provided token data, saves it to the database, and refreshes the instance with any persisted metadata.
+
+    Args:
+        db: The database session used to store the blacklisted tokens.
+        tokens: The data object containing the access and refresh tokens to blacklist.
+
+    Returns:
+        None: This function performs a database side effect and does not return a value.
+    """
+    new_tokens_blacklist = BlackListedTokens(**tokens.model_dump())
+    db.add(new_tokens_blacklist)
+    db.commit()
+    db.refresh(new_tokens_blacklist)
+
+
+
+def fetch_new_tokens(response: Response, db: Session, refresh_token: str, access_token: str):
+    """Refreshes a user's access credentials by rotating both access and refresh tokens. This function validates the provided refresh token, revokes the old token pair, and issues new tokens.
+
+    The function blacklists the existing tokens, generates a new token pair based on the user's identity, stores the new tokens in HTTP-only cookies, and returns the new access token.
 
     Args:
         response: The HTTP response object that will be updated with new token cookies.
-        db: The database session used to validate the user associated with the refresh token.
-        token: The encoded JWT refresh token submitted by the client.
+        db: The database session used to validate the refresh token and store blacklisted tokens.
+        refresh_token: The existing refresh token submitted by the client for rotation.
+        access_token: The existing access token that will be blacklisted alongside the refresh token.
 
     Returns:
         str: The newly generated access token.
     """
-    data = check_validity_of_refresh_token_and_return_token_data(db, token)
-    data={"id": str(data.id), "email": str(data.email)}
-    new_access_token, new_refresh_token = new_tokens_are_generated(data)
+    data = check_validity_of_refresh_token_and_return_token_data(db, refresh_token)
+    blacklisting_existing_tokens(db, BlackListData(access_token=access_token, refresh_token=refresh_token))
+    new_access_token, new_refresh_token = new_tokens_are_generated({"id": str(data.id), "email": str(data.email)})
     new_tokens_save_in_http_only_cookie(response, new_access_token, new_refresh_token)
     return new_access_token
-
