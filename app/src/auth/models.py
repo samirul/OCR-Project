@@ -7,6 +7,16 @@ from app.db.session import Base
 
 
 class BlackListedTokens(Base):
+    """Represents a record of access and refresh tokens that have been invalidated. This model is used to prevent the reuse of tokens that should no longer grant access.
+
+    Each entry captures the token pair along with the time they were blacklisted, enabling checks against compromised or revoked credentials.
+
+    Attributes:
+        id: The unique identifier for the blacklist entry.
+        access_token: The access token string that has been blacklisted.
+        refresh_token: The refresh token string that has been blacklisted.
+        created_at: The timestamp when the tokens were added to the blacklist.
+    """
 
     __tablename__ = "black_listed_token"
 
