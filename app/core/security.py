@@ -133,16 +133,16 @@ def check_token_type_refresh_token(token: str):
 
 
 def check_validity_of_refresh_token_and_return_token_data(db: Session, token: str):
-    """Validates a refresh token and returns its associated user identity data. This helper ensures both the token and its linked user account are still valid before issuing new tokens.
+    """Validates a refresh token and returns the associated user record. This helper confirms both token integrity and that the referenced user still exists.
 
-    The function verifies the JWT, checks that it is a refresh token, confirms the referenced user exists in the database, and then returns the parsed token payload.
+    The function verifies that the token is a refresh token, looks up the corresponding user in the database, and raises a standardized error if validation fails.
 
     Args:
         db: The database session used to look up the user referenced in the token.
         token: The encoded JWT string that should represent a refresh token.
 
     Returns:
-        TokenData: The structured token data containing the user's ID and email.
+        User: The user model instance associated with the valid refresh token.
 
     Raises:
         HTTPException: If the token is invalid, not a refresh token, or the user no longer exists.
