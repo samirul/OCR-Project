@@ -6,7 +6,7 @@ from app.src.users.models import User
 from app.src.users.schemas import UserCreate
 
 
-def commit_to_db(model_instance: User, db: Session = Depends(get_db)):
+def commit_to_db(db: Session, model_instance: User):
     """Persist a model instance to the database within the current session.
 
     This function adds the instance to the session, commits the transaction, and
@@ -20,7 +20,7 @@ def commit_to_db(model_instance: User, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(model_instance)
 
-def check_user_oauth(new_user: User, db: Session = Depends(get_db)):
+def check_user_oauth(db: Session, new_user: User):
     """Look up an existing user by email for OAuth-based authentication.
 
     This helper checks whether a user with the given email already exists and
@@ -35,7 +35,7 @@ def check_user_oauth(new_user: User, db: Session = Depends(get_db)):
     """
     return db.scalars(select(User).where(User.email == new_user.email)).first()
 
-def check_user(new_user: User, db: Session = Depends(get_db)):
+def check_user(db: Session, new_user: User):
     """Ensure that a user's email address is unique before creation.
 
     This function queries the database for an existing user with the same email
@@ -54,7 +54,7 @@ def check_user(new_user: User, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{new_user.email} already exists.")
 
 
-def check_user_id(new_user: User, db: Session = Depends(get_db)):
+def check_user_id(db: Session, new_user: User):
     """Validate that a user ID is unique before creating a new user.
 
     This function checks the database for an existing user with the same ID and
@@ -91,7 +91,7 @@ def get_user_data_from_oauth_google(data: dict) -> UserCreate:
         profile_picture=data["picture"]
     )
 
-async def create_user_oauth(user: UserCreate):
+async def create_user_oauth(db: Session, user: UserCreate):
     """Create or retrieve a user based on Google OAuth data.
 
     This function ensures that a user backed by Google OAuth exists by
@@ -106,8 +106,8 @@ async def create_user_oauth(user: UserCreate):
     """
     new_user = User(**user.model_dump())
     new_user.is_active = True
-    user = check_user_oauth(new_user)
+    user = check_user_oauth(db,new_user)
     if not user:
-        commit_to_db(new_user)
+        commit_to_db(db,new_user)
         return new_user
     return user

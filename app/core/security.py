@@ -2,13 +2,12 @@
 
 from typing import Literal
 from datetime import datetime, timedelta, timezone
-from fastapi import Depends, Response
+from fastapi import Response
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from app.core.config import jwt_configs_settings
-from app.core.deps import get_db
 from app.exceptions.exception import black_listed_token_exception, invalid_input_token_submitted, invalid_user_exception, jwt_validation_error_exception
 from app.core.schemas import BlackListData, TokenData
 from app.src.users.models import User
@@ -193,7 +192,7 @@ def new_tokens_save_in_http_only_cookie(response: Response, new_access_token, ne
     save_tokens_in_http_only_cookie(response, "refresh_token", new_refresh_token)
 
 
-def blacklisting_existing_tokens(tokens: BlackListData, db: Session = Depends(get_db)):
+def blacklisting_existing_tokens(db: Session, tokens: BlackListData):
     """Persists a pair of tokens to the blacklist store. This function ensures that specified access and refresh tokens can no longer be used for authentication.
 
     The function creates a blacklist entry from the provided token data, saves it to the database, and refreshes the instance with any persisted metadata.
@@ -210,7 +209,7 @@ def blacklisting_existing_tokens(tokens: BlackListData, db: Session = Depends(ge
     db.commit()
     db.refresh(new_tokens_blacklist)
 
-def reject_blacklisted_tokens(token: BlackListData, db: Session = Depends(get_db)):
+def reject_blacklisted_tokens(db: Session,  token: BlackListData):
     """Checks whether a given token pair has already been blacklisted. This function prevents reuse of revoked tokens by raising an error when a match is found.
 
     The function queries the blacklist store using the access token, refresh token, and user identifier, and blocks further processing if a corresponding entry exists.
@@ -236,7 +235,7 @@ def reject_blacklisted_tokens(token: BlackListData, db: Session = Depends(get_db
         raise black_listed_token_exception()
 
 
-def fetch_new_tokens(response: Response, refresh_token: str, access_token: str, db: Session = Depends(get_db)):
+def fetch_new_tokens(db: Session, response: Response, refresh_token: str, access_token: str):
     """Refreshes a user's access credentials by rotating both access and refresh tokens. This function validates the provided refresh token, revokes the old token pair, and issues new tokens.
 
     The function blacklists the existing tokens, generates a new token pair based on the user's identity, stores the new tokens in HTTP-only cookies, and returns the new access token.
@@ -251,8 +250,8 @@ def fetch_new_tokens(response: Response, refresh_token: str, access_token: str, 
         str: The newly generated access token.
     """
     data = check_validity_of_refresh_token_and_return_token_data(db, refresh_token)
-    reject_blacklisted_tokens(BlackListData(access_token=access_token, refresh_token=refresh_token, user_id=str(data.id)))
-    blacklisting_existing_tokens(BlackListData(access_token=access_token, refresh_token=refresh_token, user_id=str(data.id)))
+    reject_blacklisted_tokens(db, BlackListData(access_token=access_token, refresh_token=refresh_token, user_id=str(data.id)))
+    blacklisting_existing_tokens(db, BlackListData(access_token=access_token, refresh_token=refresh_token, user_id=str(data.id)))
     new_access_token, new_refresh_token = new_tokens_are_generated({"id": str(data.id), "email": str(data.email)})
     new_tokens_save_in_http_only_cookie(response, new_access_token, new_refresh_token)
     return new_access_token
