@@ -212,3 +212,5 @@ __marimo__/
 
 # Folders
 versions
+
+custom_OAuth2PasswordBearer.py
