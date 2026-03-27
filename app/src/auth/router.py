@@ -4,7 +4,7 @@ import logging
 from fastapi import APIRouter, Depends, Response, Request
 from sqlalchemy.orm import Session
 from app.core.deps import get_db
-from app.core.security import fetch_new_tokens
+from app.core.security import fetch_new_tokens, generate_csrf_token
 from app.src.auth.service import validate_google_token_and_extract_user_info, return_tokens_and_credentials
 from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut, ResponseTokenOut
 from app.core.deploy_checker import deploy_checker_auth_services
@@ -17,23 +17,22 @@ router_auth = APIRouter()
 
 @router_auth.post('/login/google', response_model=GoogleLoginResponseOut)
 async def google_login(response: Response, body: GoogleAuthCode, db: Session = Depends(get_db)):
-    """Handles Google OAuth login and returns authentication tokens for the user. This endpoint validates the Google token, persists or updates the user, and issues application-specific JWTs.
+    """Authenticate a user via Google OAuth and initialize their session. This endpoint exchanges a Google authorization code for user information and issues application tokens for subsequent requests.
 
-    The function orchestrates token verification, user lookup or creation, and token generation, while converting any validation or unexpected errors into HTTP-friendly responses.
+    The function validates the provided Google auth code, ensures the user exists or is created in the database, sets CSRF protection, and returns access and refresh tokens along with basic user identifiers.
 
     Args:
-        body: The request payload containing the Google authorization code.
-        db: The database session used to fetch or create the user record.
+        response: The HTTP response object used to set authentication and CSRF cookies.
+        body: The payload containing the Google authorization code and related data.
+        db: The database session used to retrieve or create the authenticated user.
 
     Returns:
-        GoogleLoginResponseOut: The access token response along with basic user identity payload.
-
-    Raises:
-        HTTPException: If Google token verification fails or a token-related error occurs.
+        GoogleLoginResponseOut: The issued access and refresh tokens, plus user identification data.
     """
     user = validate_google_token_and_extract_user_info(body)
     serialized_data = get_user_data_from_oauth_google(user)
     data = await create_user_oauth(db, serialized_data)
+    generate_csrf_token(response)
     return await return_tokens_and_credentials(
         response= response, data={"id": str(data.id), "email": str(data.email)}
     )

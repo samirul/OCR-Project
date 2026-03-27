@@ -7,6 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
+from itsdangerous import URLSafeTimedSerializer
 from app.core.config import jwt_configs_settings
 from app.exceptions.exception import black_listed_token_exception, invalid_input_token_submitted, invalid_user_exception, jwt_validation_error_exception
 from app.core.schemas import BlackListData, TokenData
@@ -17,7 +18,7 @@ SECRET_KEY = jwt_configs_settings.secret_key
 ALGORITHM = jwt_configs_settings.jwt_algorithm
 ACCESS_TOKEN_EXPIRE_MINUTES = int(jwt_configs_settings.jwt_expiration_minutes)
 SameSitePolicy = Literal["lax", "strict", "none"]
-
+url_safe_serializer = URLSafeTimedSerializer(SECRET_KEY)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -255,3 +256,23 @@ def fetch_new_tokens(db: Session, response: Response, refresh_token: str, access
     new_access_token, new_refresh_token = new_tokens_are_generated({"id": str(data.id), "email": str(data.email)})
     new_tokens_save_in_http_only_cookie(response, new_access_token, new_refresh_token)
     return new_access_token
+
+def generate_csrf_token(response: Response):
+    """Generate a CSRF token and attach it to the response as a cookie. This token helps protect state-changing requests against cross-site request forgery attacks.
+
+    The function creates a signed, URL-safe token using the application secret key and stores it in a non-HTTP-only cookie with a strict SameSite policy.
+
+    Args:
+        response: The HTTP response object on which the CSRF cookie will be set.
+
+    Returns:
+        None: This function modifies the response in-place and does not return a value.
+    """
+    new_csrf_token = url_safe_serializer.dumps(SECRET_KEY)
+    response.set_cookie(
+        key="csrf_token",
+        value=new_csrf_token,
+        httponly=False,
+        samesite="strict",
+        secure=True
+    )
