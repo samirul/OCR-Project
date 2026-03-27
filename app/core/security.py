@@ -210,6 +210,20 @@ def blacklisting_existing_tokens(db: Session, tokens: BlackListData):
     db.refresh(new_tokens_blacklist)
 
 def reject_blacklisted_tokens(db: Session, token: BlackListData):
+    """Checks whether a given token pair has already been blacklisted. This function prevents reuse of revoked tokens by raising an error when a match is found.
+
+    The function queries the blacklist store using the access token, refresh token, and user identifier, and blocks further processing if a corresponding entry exists.
+
+    Args:
+        db: The database session used to query the blacklist table.
+        token: The token data containing access, refresh, and user identifier fields to check.
+
+    Returns:
+        None: This function raises an exception when a blacklisted token is detected instead of returning a value.
+
+    Raises:
+        HTTPException: If the provided token pair is found in the blacklist.
+    """
     blacklisted_query = (
         select(BlackListedTokens)
         .where(BlackListedTokens.access_token == token.access_token)
