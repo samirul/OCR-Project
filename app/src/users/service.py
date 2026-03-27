@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
+from fastapi import Depends, HTTPException, status
+from app.core.deps import get_db
 from app.src.users.models import User
 from app.src.users.schemas import UserCreate
 
@@ -90,7 +91,7 @@ def get_user_data_from_oauth_google(data: dict) -> UserCreate:
         profile_picture=data["picture"]
     )
 
-async def create_user_oauth(user: UserCreate, db: Session):
+async def create_user_oauth(user: UserCreate, db: Session = Depends(get_db)):
     """Create or retrieve a user based on Google OAuth data.
 
     This function ensures that a user backed by Google OAuth exists by
