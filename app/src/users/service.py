@@ -1,7 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status
-from app.core.deps import get_db
+from fastapi import HTTPException, status
 from app.src.users.models import User
 from app.src.users.schemas import UserCreate
 
