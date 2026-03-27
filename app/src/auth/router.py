@@ -8,7 +8,7 @@ from app.src.auth.service import validate_google_token_and_extract_user_info, re
 from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut, ResponseTokenOut
 from app.core.deploy_checker import deploy_checker_auth_services
 from app.src.users.service import get_user_data_from_oauth_google, create_user_oauth
-from app.db.session import get_db
+from app.core.deps import get_db
 
 config = deploy_checker_auth_services()
 logger = logging.getLogger(__name__)
