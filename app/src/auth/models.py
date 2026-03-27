@@ -1,21 +1,23 @@
 import uuid
-from sqlalchemy import String, text
+from sqlalchemy import String, text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql.sqltypes import TIMESTAMP
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.session import Base
 
 
 class BlackListedTokens(Base):
-    """Represents a record of access and refresh tokens that have been invalidated. This model is used to prevent the reuse of tokens that should no longer grant access.
+    """Represents a record of tokens that have been invalidated and should no longer be accepted. This model is used to persist blacklisted tokens for security and auditing purposes.
 
-    Each entry captures the token pair along with the time they were blacklisted, enabling checks against compromised or revoked credentials.
+    The blacklisted tokens are associated with a specific user and timestamped to track when they were revoked.
 
     Attributes:
-        id: The unique identifier for the blacklist entry.
-        access_token: The access token string that has been blacklisted.
-        refresh_token: The refresh token string that has been blacklisted.
-        created_at: The timestamp when the tokens were added to the blacklist.
+        id: The unique identifier of the blacklisted token record.
+        access_token: The access token that has been blacklisted and must be rejected.
+        refresh_token: The refresh token that has been blacklisted and must be rejected.
+        user_id: The identifier of the user to whom the blacklisted tokens belong.
+        created_at: The timestamp indicating when the tokens were blacklisted.
+        user: The user relationship associated with the blacklisted tokens.
     """
 
     __tablename__ = "black_listed_token"
@@ -27,13 +29,19 @@ class BlackListedTokens(Base):
         nullable=False
     )
     access_token: Mapped[str] = mapped_column(
-        String, nullable=False
+        String, nullable=True
     )
     refresh_token: Mapped[str] = mapped_column(
-        String, nullable=False
+        String, nullable=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), 
+        ForeignKey("user.id", ondelete="CASCADE"), 
+        nullable=False
     )
     created_at: Mapped[TIMESTAMP] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=False,
         server_default=text('now()')
     )
+    user: Mapped["User"] = relationship(back_populates="blacklisted_tokens") # type: ignore

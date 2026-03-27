@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from app.core.config import jwt_configs_settings
-from app.exceptions.exception import invalid_input_token_submitted, invalid_user_exception, jwt_validation_error_exception
+from app.exceptions.exception import black_listed_token_exception, invalid_input_token_submitted, invalid_user_exception, jwt_validation_error_exception
 from app.core.schemas import BlackListData, TokenData
 from app.src.users.models import User
 from app.src.auth.models import BlackListedTokens
@@ -209,6 +209,16 @@ def blacklisting_existing_tokens(db: Session, tokens: BlackListData):
     db.commit()
     db.refresh(new_tokens_blacklist)
 
+def reject_blacklisted_tokens(db: Session, token: BlackListData):
+    blacklisted_query = (
+        select(BlackListedTokens)
+        .where(BlackListedTokens.access_token == token.access_token)
+        .where(BlackListedTokens.refresh_token == token.refresh_token)
+        .where(BlackListedTokens.user_id == token.user_id)
+    )
+    blacklisted_tokens = db.scalars(blacklisted_query).first()
+    if blacklisted_tokens is not None:
+        raise black_listed_token_exception()
 
 
 def fetch_new_tokens(response: Response, db: Session, refresh_token: str, access_token: str):
@@ -226,7 +236,8 @@ def fetch_new_tokens(response: Response, db: Session, refresh_token: str, access
         str: The newly generated access token.
     """
     data = check_validity_of_refresh_token_and_return_token_data(db, refresh_token)
-    blacklisting_existing_tokens(db, BlackListData(access_token=access_token, refresh_token=refresh_token))
+    reject_blacklisted_tokens(db, BlackListData(access_token=access_token, refresh_token=refresh_token, user_id=str(data.id)))
+    blacklisting_existing_tokens(db, BlackListData(access_token=access_token, refresh_token=refresh_token, user_id=str(data.id)))
     new_access_token, new_refresh_token = new_tokens_are_generated({"id": str(data.id), "email": str(data.email)})
     new_tokens_save_in_http_only_cookie(response, new_access_token, new_refresh_token)
     return new_access_token

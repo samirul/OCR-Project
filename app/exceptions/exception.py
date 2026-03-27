@@ -89,3 +89,17 @@ def invalid_input_token_submitted():
         detail="Token should be refresh token only.",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+def black_listed_token_exception():
+    """Creates an HTTP exception for attempts to use a blacklisted token. This helper standardizes the response when a token has been revoked and must not be honored.
+
+    The returned exception uses a 401 Unauthorized status and includes the appropriate WWW-Authenticate header for Bearer tokens.
+
+    Returns:
+        HTTPException: An exception configured for blacklisted token usage.
+    """
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token is black listed and can't be used.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )

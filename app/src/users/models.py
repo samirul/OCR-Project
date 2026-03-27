@@ -1,18 +1,27 @@
 """Created User model"""
 import uuid
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy import String, text, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql.sqltypes import TIMESTAMP
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.session import Base
 
 class User(Base):
-    """Represent an application user and their core account attributes.
-    This model defines how user data is stored and managed in the database.
+    """Represents an application user and their core account information. This model defines the primary identity, status, and profile fields used throughout the system.
 
-    The user record includes identity, authentication, and status information.
-    It also tracks profile metadata and timestamps for auditing user lifecycle.
+    The user record also tracks creation and update timestamps, along with relationships to security-related data such as blacklisted tokens.
+
+    Attributes:
+        id: The unique identifier for the user.
+        email: The user's email address, which must be unique.
+        username: The user's chosen username, which must be unique.
+        is_admin: Indicates whether the user has administrative privileges.
+        is_active: Indicates whether the user's account is currently active.
+        profile_picture: An optional URL or path to the user's profile image.
+        created_at: The timestamp when the user account was created.
+        updated_at: The timestamp when the user account was last updated.
+        blacklisted_tokens: A collection of blacklisted tokens associated with the user.
     """
     __tablename__ = "user"
 
@@ -61,3 +70,4 @@ class User(Base):
         onupdate=text('now()'),
         nullable=False
     )
+    blacklisted_tokens: Mapped[List["BlackListedTokens"]] = relationship(back_populates="user") # type: ignore
