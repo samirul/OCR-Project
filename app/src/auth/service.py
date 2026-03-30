@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from google_auth_oauthlib.flow import Flow
+import httpx
 from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
 from app.core.deploy_checker import deploy_checker_auth_services
 from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut, UserPayload
@@ -215,3 +216,63 @@ async def return_tokens_and_credentials(response, data: dict) -> GoogleLoginResp
         refresh_token="",
         user=UserPayload(id=payload_data.id, email=payload_data.email)
     )
+
+async def github_exchange_code_for_token(code: str) -> str:
+    """Exchanges a GitHub OAuth authorization code for an access token. This function performs the server-side token request against GitHub's OAuth endpoint.
+
+    The function sends the client credentials and authorization code to GitHub and returns the parsed JSON response for further processing.
+
+    Args:
+        code: The short-lived GitHub OAuth authorization code received from the client.
+
+    Returns:
+        str: The JSON response from GitHub containing the access token and related metadata.
+    """
+    async with httpx.AsyncClient() as client:
+        result = await client.post(
+            "https://github.com/login/oauth/access_token",
+            data={
+                "client_id": config("GITHUB_CLIENT_ID"),
+                "client_secret": config("GITHUB_CLIENT_SECRET"),
+                "code": code,
+            },
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        )
+
+        return result.json()["access_token"]
+    
+
+async def get_github_user_info(access_token: str) -> dict:
+    """Retrieves the authenticated GitHub user's profile information using an access token. This function calls the GitHub User API and returns the parsed JSON response.
+
+    The access token must have sufficient scopes for the desired user data, and the response structure follows GitHub's user resource format.
+
+    Args:
+        access_token: The GitHub OAuth access token used to authorize the API request.
+
+    Returns:
+        dict: A dictionary containing the GitHub user's profile information as returned by the API.
+    """
+    async with httpx.AsyncClient() as client:
+        result = await client.get(
+            "https://api.github.com/user",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        return result.json()
+    
+async def github_login_user(code: str):
+    """Authenticates a user with GitHub using an OAuth authorization code and returns their profile information. This function coordinates the code exchange and user lookup in a single operation.
+
+    The function first retrieves an access token from GitHub using the provided code, then fetches the authenticated user's details with that token.
+
+    Args:
+        code: The GitHub OAuth authorization code received from the client after user consent.
+
+    Returns:
+        dict: A dictionary containing the authenticated GitHub user's profile information.
+    """
+    github_access_token = await github_exchange_code_for_token(code)
+    return await get_github_user_info(github_access_token)

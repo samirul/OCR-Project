@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, Response, Request
 from sqlalchemy.orm import Session
 from app.core.deps import get_db
 from app.core.security import fetch_new_tokens, generate_csrf_token
-from app.src.auth.service import validate_google_token_and_extract_user_info, return_tokens_and_credentials
-from app.src.auth.schemas import GoogleAuthCode, GoogleLoginResponseOut, ResponseTokenOut
+from app.src.auth.service import github_login_user, validate_google_token_and_extract_user_info, return_tokens_and_credentials
+from app.src.auth.schemas import GoogleAuthCode, GithubAuthCode ,GoogleLoginResponseOut, GithubLoginResponseOut, ResponseTokenOut
 from app.core.deploy_checker import deploy_checker_auth_services
-from app.src.users.service import get_user_data_from_oauth_google, create_user_oauth
+from app.src.users.service import get_user_data_from_oauth, create_user_oauth
 
 config = deploy_checker_auth_services()
 logger = logging.getLogger(__name__)
@@ -30,9 +30,30 @@ async def google_login(response: Response, body: GoogleAuthCode, db: Session = D
         GoogleLoginResponseOut: The issued access and refresh tokens, plus user identification data.
     """
     user = validate_google_token_and_extract_user_info(body)
-    serialized_data = get_user_data_from_oauth_google(user)
+    serialized_data = get_user_data_from_oauth(user)
     data = await create_user_oauth(db, serialized_data)
     generate_csrf_token(response)
+    return await return_tokens_and_credentials(
+        response= response, data={"id": str(data.id), "email": str(data.email)}
+    )
+@router_auth.post('/login/github', response_model=GithubLoginResponseOut)
+async def github_login(response: Response, body: GithubAuthCode, db: Session = Depends(get_db)):
+    """Authenticate a user via GitHub OAuth and initialize their session. This endpoint exchanges a GitHub authorization code for user information and issues application tokens for subsequent requests.
+
+    The function validates the provided GitHub auth code, ensures the user exists or is created in the database, sets CSRF protection, and returns access and refresh tokens along with basic user identifiers.
+
+    Args:
+        response: The HTTP response object used to set authentication and CSRF cookies.
+        body: The payload containing the GitHub authorization code and related data.
+        db: The database session used to retrieve or create the authenticated user.
+
+    Returns:
+        GithubLoginResponseOut: The issued access and refresh tokens, plus user identification data.
+    """
+    generate_csrf_token(response)
+    user = await github_login_user(body.code)
+    serialized_data = get_user_data_from_oauth(user)
+    data = await create_user_oauth(db, serialized_data)
     return await return_tokens_and_credentials(
         response= response, data={"id": str(data.id), "email": str(data.email)}
     )

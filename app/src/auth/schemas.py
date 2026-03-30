@@ -22,6 +22,25 @@ class GoogleAuthCode(BaseModel):
         """
         from_attributes = True
 
+class GithubAuthCode(BaseModel):
+    """Represents the payload containing a GitHub OAuth authorization code. This model is used to validate incoming GitHub login requests before starting authentication.
+
+    The code encapsulates the short-lived token returned by GitHub's OAuth flow and is required to exchange for an access token.
+
+    Attributes:
+        code: The authorization code obtained from GitHub's OAuth process.
+    """
+    code: str
+    class Config:
+        """Pydantic configuration for the GithubAuthCode model. This configuration controls how data is populated and serialized for this schema.
+
+        The current setup allows instances to be created from ORM objects by reading attributes directly.
+
+        Attributes:
+            from_attributes: Enables population of the model from object attributes instead of only from dict-like structures.
+        """
+        from_attributes = True
+
 class UserPayload(BaseModel):
     """Represents the minimal user identity information carried in authentication payloads. This model captures the core fields needed to identify and contact a user.
 
@@ -49,6 +68,29 @@ class GoogleLoginResponseOut(BaseModel):
     user: UserPayload
     class Config:
         """Pydantic configuration for the GoogleLoginResponseOut model. This configuration defines how the response model can be populated from underlying data objects.
+
+        The current setup enables constructing the response from ORM-like objects by reading their attributes directly.
+
+        Attributes:
+            from_attributes: Allows population of the model from object attributes instead of only dictionaries.
+        """
+        from_attributes = True
+
+class GithubLoginResponseOut(BaseModel):
+    """Defines the response structure returned after a successful GitHub login. This model bundles issued tokens with the authenticated user's core identity payload.
+
+    The response is designed to be sent to clients so they can store the access token and understand which user it represents.
+
+    Attributes:
+        access_token: The JWT or token string granting access to protected resources.
+        refresh_token: A token string that can be used to obtain a new access token, if implemented.
+        user: The minimal user identity information associated with the authenticated session.
+    """
+    access_token: str
+    refresh_token: str
+    user: UserPayload
+    class Config:
+        """Pydantic configuration for the GithubLoginResponseOut model. This configuration defines how the response model can be populated from underlying data objects.
 
         The current setup enables constructing the response from ORM-like objects by reading their attributes directly.
 

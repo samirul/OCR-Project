@@ -72,22 +72,21 @@ def check_user_id(db: Session, new_user: User):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{new_user.id} already exists.")
     
 
-def get_user_data_from_oauth_google(data: dict) -> UserCreate:
-    """Transform raw Google OAuth user data into a UserCreate schema.
+def get_user_data_from_oauth(data: dict) -> UserCreate:
+    """Builds a user creation payload from generic OAuth profile data. This helper normalizes fields from different OAuth providers into the application's UserCreate schema.
 
-    This function extracts the relevant user fields from the OAuth payload and
-    maps them into the internal user creation model.
+    The function extracts core identity attributes such as email, display name, and profile picture URL, preferring available values across provider-specific keys.
 
     Args:
-        data: The dictionary containing user information returned by Google OAuth.
+        data: A dictionary of user profile attributes returned by an OAuth provider, such as Google or GitHub.
 
     Returns:
-        UserCreate: A populated user creation schema built from the OAuth data.
+        UserCreate: A populated user creation schema ready to be used for user persistence or lookup.
     """
     return UserCreate(
         email=data["email"],
-        username=data["name"],
-        profile_picture=data["picture"]
+        username=data["name"] or data["login"],
+        profile_picture=data.get("picture") or data.get("avatar_url")
     )
 
 async def create_user_oauth(db: Session, user: UserCreate):
