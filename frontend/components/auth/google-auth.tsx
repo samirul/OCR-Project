@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 
 // Interface for axios response.
 interface AuthResponse {
-  access: string;
+  access_token: string;
   user: {
-    pk: number | string;
     email: string;
+    id: number | string;
   };
 }
 
@@ -30,8 +30,8 @@ const GoogleLoginAuth = () => {
         //Checking if response status code is 200 and can fetch access token and user id.
         if (
           response.status === 200 &&
-          response.data?.access &&
-          response.data?.user?.pk
+          response.data?.access_token &&
+          response.data?.user?.id
         ) {
           router.push("/"); //Redirect user after successful login.
         }
@@ -40,12 +40,10 @@ const GoogleLoginAuth = () => {
         if (axios.isAxiosError(error)) {
           const status = error.response?.status; //Get error status code.
           const message = error.response?.data; //Get error messages.
-
           console.error("Data fetching error:", {
             status,
             message,
           });
-
           if (status === 400 || status === 401 || status === 500) {
             router.push("/auth/login"); //Redirect to login page.
           }
