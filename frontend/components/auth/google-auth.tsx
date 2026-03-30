@@ -55,6 +55,7 @@ const GoogleLoginAuth = () => {
     },
     flow: "auth-code",
     onError: (error) => {
+      console.error("Authentication failed:", error);
       router.push("/auth/login"); //Redirect to login page.
     },
   });
