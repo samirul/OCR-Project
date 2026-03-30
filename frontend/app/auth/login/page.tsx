@@ -126,7 +126,7 @@ export default function LoginPage() {
             Create your account?
           </Button>
         </CardAction>
-          <Button variant="outline" className="w-full cursor-pointer" onClick={login}>
+        <Button variant="outline" className="w-full cursor-pointer" onClick={login}>
           <FcGoogle className="relative right-2 size-5" />
           Login with Google
         </Button>
