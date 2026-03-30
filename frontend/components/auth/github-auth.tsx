@@ -15,7 +15,7 @@ const GithubLoginAuth = () => {
   const router = useRouter();
   return useGitHubLogin({
     clientId: `${process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID}`,
-    redirectUri: "http://localhost:3000/",
+    redirectUri: `${process.env.NEXT_PUBLIC_GITHUB_REDIRECT_URI}`,
     onSuccess: async (codeResponse: OAuthResponse) => {
       try {
         const response: AxiosResponse<AuthResponse> = await axios.post(
