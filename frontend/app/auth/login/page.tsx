@@ -44,7 +44,7 @@ export default function LoginPage() {
   function onSubmit() {
     console.log("login success");
   }
-  //Get login function for google login.
+  //Get login function for google login and github login.
   const { login } = GoogleLoginAuth();
   const {initiateGitHubLogin, isLoading} = GithubLoginAuth();
 
