@@ -1,38 +1,38 @@
 from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import SessionLocal
 from app.core.security import verify_token
 from app.src.users.models import User
 
 
-def get_db():
-    """Provide a transactional database session for request handling.
+async def get_db():
+    """Provide an asynchronous database session for use within a request lifecycle.
 
-    This function creates a new SQLAlchemy SessionLocal instance, yields it for use, and
-    ensures that the session is properly closed after the calling context is finished.
+    This function yields a database session and ensures that any errors cause a rollback
+    before the exception is re-raised.
 
     Yields:
-        Session: A SQLAlchemy session bound to the configured database engine.
+        AsyncSession: An active asynchronous database session.
     """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    async with SessionLocal() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
+async def fetch_user(db: AsyncSession, token: str):
+    """Fetch a user based on the provided access token. 
 
-def fetch_user(db: Session, token: str):
-    """Fetch a user from the database using data extracted from an access token.
-
-    This function validates the provided token, derives identifying user information,
-    and retrieves the corresponding user record if it exists.
+    This function validates the token and retrieves the user whose identity matches
+    the information encoded in the token.
 
     Args:
-        db: The database session used to execute the user lookup.
-        token: The encoded access token containing user identification data.
+        db: The database session used to query the user.
+        token: The access token containing user identification data.
 
     Returns:
-        User | None: The matching user instance if found, otherwise None.
+        User | None: The user matching the token data, or None if no user is found.
     """
     token_data = verify_token(token)
     user_query = (
@@ -40,11 +40,12 @@ def fetch_user(db: Session, token: str):
         .where(User.id == token_data.id)
         .where(User.email == token_data.email)
     )
-    return db.scalars(user_query).first()
+    result = await db.scalars(user_query)
+    return result.first()
 
 
 
-def get_current_user(request: Request, db: Session = Depends(get_db)):
+async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)):
     """Retrieve the currently authenticated user based on the access token cookie.
 
     This function extracts the access token from the incoming request cookies, validates
@@ -61,7 +62,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
         HTTPException: If the token is missing, invalid, or the user cannot be found.
     """
     token = request.cookies.get("access_token")
-    user = fetch_user(db, str(token))
+    user = await fetch_user(db, str(token))
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"})
     return user

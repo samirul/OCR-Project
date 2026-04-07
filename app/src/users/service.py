@@ -1,73 +1,75 @@
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 from app.src.users.models import User
 from app.src.users.schemas import UserCreate
 
 
-def commit_to_db(db: Session, model_instance: User):
-    """Persist a model instance to the database within the current session.
+async def commit_to_db(db: AsyncSession, model_instance: User):
+    """Persist a user model instance to the database and synchronize its state. This helper encapsulates the common pattern of adding, committing, and refreshing a user record.
 
-    This function adds the instance to the session, commits the transaction, and
-    refreshes the instance with any changes made by the database.
-
-    Args:
-        db: The active database session used for persistence operations.
-        model_instance: The user model instance to be saved and refreshed.
-    """
-    db.add(model_instance)
-    db.commit()
-    db.refresh(model_instance)
-
-def check_user_oauth(db: Session, new_user: User):
-    """Look up an existing user by email for OAuth-based authentication.
-
-    This helper checks whether a user with the given email already exists and
-    returns the matching user instance if found.
+    The function attaches the given model instance to the session, commits the transaction, and refreshes the instance so it reflects any database-generated values.
 
     Args:
-        db: The active database session used to query user records.
-        new_user: The user instance whose email is used for the lookup.
+        db: The active database AsyncSession used to persist the model instance.
+        model_instance: The user model instance that should be saved and refreshed.
 
     Returns:
-        User | None: The existing user with the same email, or None if no match is found.
+        None: This function performs database side effects and does not return a value.
     """
-    return db.scalars(select(User).where(User.email == new_user.email)).first()
+    db.add(model_instance)
+    await db.commit()
+    await db.refresh(model_instance)
 
-def check_user(db: Session, new_user: User):
-    """Ensure that a user's email address is unique before creation.
+async def check_user_oauth(db: AsyncSession, new_user: User):
+    """Look up an existing user created via OAuth by their email address.
 
-    This function queries the database for an existing user with the same email
-    and blocks the operation if a duplicate is found.
+    This function searches the database for a user whose email matches the
+    provided user instance and returns the first match if found.
 
     Args:
-        db: The active database session used to perform the lookup.
+        db: The active database AsyncSession used to perform the lookup.
+        new_user: The user instance whose email will be used for the search.
+
+    Returns:
+        User | None: The matching user if one exists, otherwise ``None``.
+    """
+    return (await db.scalars(select(User).where(User.email == new_user.email))).first()
+
+async def check_user(db: AsyncSession, new_user: User):
+    """Ensure that a user's email address is unique before creating or updating a record.
+
+    This function checks for an existing user with the same email and prevents
+    duplicates by raising an HTTP 403 error if a conflict is found.
+
+    Args:
+        db: The active database AsyncSession used to perform the lookup.
         new_user: The user instance whose email should be validated for uniqueness.
 
     Raises:
         HTTPException: Raised with a 403 status code if a user with the same email
             already exists in the database.
     """
-    user = db.scalars(select(User).where(User.email == new_user.email)).first()
+    user = (await db.scalars(select(User).where(User.email == new_user.email))).first()
     if user is not None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{new_user.email} already exists.")
 
 
-def check_user_id(db: Session, new_user: User):
-    """Validate that a user ID is unique before creating a new user.
+async def check_user_id(db: AsyncSession, new_user: User):
+    """Verify that a user's ID is unique before persisting or updating their record.
 
-    This function checks the database for an existing user with the same ID and
-    blocks creation if a conflict is found.
+    This function checks for an existing user with the same ID and prevents
+    duplicates by raising an HTTP 403 error if a conflict is found.
 
     Args:
-        db: The active database session used to perform the lookup.
+        db: The active database AsyncSession used to perform the lookup.
         new_user: The user instance whose ID should be validated for uniqueness.
 
     Raises:
         HTTPException: Raised with a 403 status code if a user with the same ID
             already exists in the database.
     """
-    user_id = db.scalars(select(User).where(User.id == new_user.id)).first()
+    user_id = (await db.scalars(select(User).where(User.id == new_user.id))).first()
     if user_id is not None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{new_user.id} already exists.")
     
@@ -89,23 +91,22 @@ def get_user_data_from_oauth(data: dict) -> UserCreate:
         profile_picture=data.get("picture") or data.get("avatar_url")
     )
 
-async def create_user_oauth(db: Session, user: UserCreate):
-    """Create or retrieve a user based on Google OAuth data.
+async def create_user_oauth(db: AsyncSession, user: UserCreate):
+    """Create or retrieve a user based on OAuth-derived profile data. This function ensures that OAuth logins map to a single, active user record per email address.
 
-    This function ensures that a user backed by Google OAuth exists by
-    either returning an existing record or creating a new active user.
+    The function builds a User model from the provided data, checks for an existing user with the same email, and either returns the existing user or persists a new active user.
 
     Args:
-        user: The user creation schema populated from Google OAuth data.
-        db: The active database session used to query and persist user records.
+        db: The active database AsyncSession used to query and persist user records.
+        user: The validated user creation payload constructed from OAuth profile data.
 
     Returns:
-        User: The existing or newly created user associated with the OAuth data.
+        User: The existing user if one was found, otherwise the newly created active user.
     """
     new_user = User(**user.model_dump())
     new_user.is_active = True
-    user = check_user_oauth(db,new_user)
+    user = await check_user_oauth(db,new_user)
     if not user:
-        commit_to_db(db,new_user)
+        await commit_to_db(db,new_user)
         return new_user
     return user

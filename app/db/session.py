@@ -1,12 +1,11 @@
 """Configuration for Database, Engine & SessionLocal"""
 
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.orm import declarative_base
 from app.core.config import database_configs_settings
 
 # Database URL.
-DATABASE_URL = f"postgresql://{
+DATABASE_URL = f"postgresql+asyncpg://{
     database_configs_settings.database_username
     }:{database_configs_settings.database_password
     }@{database_configs_settings.database_hostname
@@ -14,7 +13,7 @@ DATABASE_URL = f"postgresql://{
     }/{database_configs_settings.database_name}"
 
 # Create engine.
-engine = create_engine(
+engine = create_async_engine(
     DATABASE_URL,
     pool_pre_ping=True,
     pool_size=10,
@@ -22,10 +21,11 @@ engine = create_engine(
 )
 
 # Create the Session maker.
-SessionLocal = sessionmaker(
-    autocommit=False,
+SessionLocal = async_sessionmaker(
     autoflush=False,
-    bind=engine
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
 )
 
 # Base class for inherit by all models.

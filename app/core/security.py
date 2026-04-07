@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import Response
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError, jwt
 from itsdangerous import URLSafeTimedSerializer
 from app.core.config import jwt_configs_settings
@@ -133,20 +133,20 @@ def check_token_type_refresh_token(token: str):
         raise invalid_input_token_submitted()
 
 
-def check_validity_of_refresh_token_and_return_token_data(db: Session, token: str):
-    """Validates a refresh token and returns the associated user record. This helper confirms both token integrity and that the referenced user still exists.
+async def check_validity_of_refresh_token_and_return_token_data(db: AsyncSession, token: str):
+    """Validate a refresh token and return the associated user record. This function ensures the token is a refresh token, belongs to a real user, and is structurally valid.
 
-    The function verifies that the token is a refresh token, looks up the corresponding user in the database, and raises a standardized error if validation fails.
+    The function decodes the token, verifies its type, looks up the corresponding user in the database, and raises a standardized error if no matching user is found.
 
     Args:
-        db: The database session used to look up the user referenced in the token.
-        token: The encoded JWT string that should represent a refresh token.
+        db: The database AsyncSession used to query the user table.
+        token: The encoded JWT refresh token submitted by the client.
 
     Returns:
-        User: The user model instance associated with the valid refresh token.
+        User: The user associated with the provided refresh token.
 
     Raises:
-        HTTPException: If the token is invalid, not a refresh token, or the user no longer exists.
+        HTTPException: If the token is invalid, not a refresh token, or the user does not exist.
     """
     token_data = verify_token(token)
     check_token_type_refresh_token(token)
@@ -155,7 +155,7 @@ def check_validity_of_refresh_token_and_return_token_data(db: Session, token: st
         .where(User.id == token_data.id)
         .where(User.email == token_data.email)
     )
-    user = db.scalars(user_query).first()
+    user = (await db.scalars(user_query)).first()
     if user is None:
         raise invalid_user_exception()
     return user
@@ -193,37 +193,37 @@ def new_tokens_save_in_http_only_cookie(response: Response, new_access_token, ne
     save_tokens_in_http_only_cookie(response, "refresh_token", new_refresh_token)
 
 
-def blacklisting_existing_tokens(db: Session, tokens: BlackListData):
-    """Persists a pair of tokens to the blacklist store. This function ensures that specified access and refresh tokens can no longer be used for authentication.
+async def blacklisting_existing_tokens(db: AsyncSession, tokens: BlackListData):
+    """Persist a token pair in the blacklist to prevent its future use. This function records revoked access and refresh tokens along with the associated user.
 
-    The function creates a blacklist entry from the provided token data, saves it to the database, and refreshes the instance with any persisted metadata.
+    The function creates a blacklist entry from the provided token data, stores it in the database, and finalizes the transaction so the revocation is durable.
 
     Args:
-        db: The database session used to store the blacklisted tokens.
-        tokens: The data object containing the access and refresh tokens to blacklist.
+        db: The database AsyncSession used to store the blacklist entry.
+        tokens: The token data containing access, refresh, and user identifier fields to blacklist.
 
     Returns:
-        None: This function performs a database side effect and does not return a value.
+        None: This function commits the blacklist entry and does not return a value.
     """
     new_tokens_blacklist = BlackListedTokens(**tokens.model_dump())
     db.add(new_tokens_blacklist)
-    db.commit()
-    db.refresh(new_tokens_blacklist)
+    await db.commit()
+    await db.refresh(new_tokens_blacklist)
 
-def reject_blacklisted_tokens(db: Session,  token: BlackListData):
-    """Checks whether a given token pair has already been blacklisted. This function prevents reuse of revoked tokens by raising an error when a match is found.
+async def reject_blacklisted_tokens(db: AsyncSession,  token: BlackListData):
+    """Reject the use of tokens that have already been blacklisted. This function prevents revoked access and refresh tokens from being reused for authentication or refresh flows.
 
-    The function queries the blacklist store using the access token, refresh token, and user identifier, and blocks further processing if a corresponding entry exists.
+    The function checks the blacklist for a matching token pair and raises a standardized error if a revoked entry is found.
 
     Args:
-        db: The database session used to query the blacklist table.
-        token: The token data containing access, refresh, and user identifier fields to check.
+        db: The database AsyncSession used to query the blacklist table.
+        token: The token data containing access, refresh, and user identifier fields to validate.
 
     Returns:
-        None: This function raises an exception when a blacklisted token is detected instead of returning a value.
+        None: This function raises an exception when a match is found instead of returning a value.
 
     Raises:
-        HTTPException: If the provided token pair is found in the blacklist.
+        HTTPException: If the provided token pair has already been blacklisted.
     """
     blacklisted_query = (
         select(BlackListedTokens)
@@ -231,28 +231,31 @@ def reject_blacklisted_tokens(db: Session,  token: BlackListData):
         .where(BlackListedTokens.refresh_token == token.refresh_token)
         .where(BlackListedTokens.user_id == token.user_id)
     )
-    blacklisted_tokens = db.scalars(blacklisted_query).first()
+    blacklisted_tokens = (await db.scalars(blacklisted_query)).first()
     if blacklisted_tokens is not None:
         raise black_listed_token_exception()
 
 
-def fetch_new_tokens(db: Session, response: Response, refresh_token: str, access_token: str):
-    """Refreshes a user's access credentials by rotating both access and refresh tokens. This function validates the provided refresh token, revokes the old token pair, and issues new tokens.
+async def fetch_new_tokens(db: AsyncSession, response: Response, refresh_token: str, access_token: str):
+    """Issue a fresh pair of access and refresh tokens using a valid refresh token. This endpoint enforces token revocation rules by blacklisting the previous tokens before returning new ones.
 
-    The function blacklists the existing tokens, generates a new token pair based on the user's identity, stores the new tokens in HTTP-only cookies, and returns the new access token.
+    The function validates the submitted refresh token, ensures the existing tokens are not already revoked, blacklists them, generates new tokens, and stores the new pair in secure cookies.
 
     Args:
-        response: The HTTP response object that will be updated with new token cookies.
-        db: The database session used to validate the refresh token and store blacklisted tokens.
-        refresh_token: The existing refresh token submitted by the client for rotation.
-        access_token: The existing access token that will be blacklisted alongside the refresh token.
+        db: The database AsyncSession used to validate and blacklist tokens.
+        response: The HTTP response object that will receive the new token cookies.
+        refresh_token: The current JWT refresh token presented by the client.
+        access_token: The current JWT access token associated with the session.
 
     Returns:
-        str: The newly generated access token.
+        str: The newly generated access token that replaces the previous one.
+
+    Raises:
+        HTTPException: If the refresh token is invalid, the user does not exist, or the tokens have already been blacklisted.
     """
-    data = check_validity_of_refresh_token_and_return_token_data(db, refresh_token)
-    reject_blacklisted_tokens(db, BlackListData(access_token=access_token, refresh_token=refresh_token, user_id=str(data.id)))
-    blacklisting_existing_tokens(db, BlackListData(access_token=access_token, refresh_token=refresh_token, user_id=str(data.id)))
+    data = await check_validity_of_refresh_token_and_return_token_data(db, refresh_token)
+    await reject_blacklisted_tokens(db, BlackListData(access_token=access_token, refresh_token=refresh_token, user_id=str(data.id)))
+    await blacklisting_existing_tokens(db, BlackListData(access_token=access_token, refresh_token=refresh_token, user_id=str(data.id)))
     new_access_token, new_refresh_token = new_tokens_are_generated({"id": str(data.id), "email": str(data.email)})
     new_tokens_save_in_http_only_cookie(response, new_access_token, new_refresh_token)
     return new_access_token
