@@ -1,7 +1,6 @@
 """Pydantic schema for authentications"""
-
-from pydantic import BaseModel
-
+import string
+from pydantic import BaseModel, EmailStr, Field, SecretStr, field_validator, model_validator
 
 class GoogleAuthCode(BaseModel):
     """Represents the payload containing a Google OAuth authorization code. This model is used to validate incoming login requests before processing authentication.
@@ -93,6 +92,88 @@ class GithubLoginResponseOut(BaseModel):
         """Pydantic configuration for the GithubLoginResponseOut model. This configuration defines how the response model can be populated from underlying data objects.
 
         The current setup enables constructing the response from ORM-like objects by reading their attributes directly.
+
+        Attributes:
+            from_attributes: Allows population of the model from object attributes instead of only dictionaries.
+        """
+        from_attributes = True
+
+class RegisterUser(BaseModel):
+    """Defines the payload required to register a new user account. This model enforces basic email and password rules before user creation.
+
+    The schema ensures that passwords meet minimum complexity requirements and that the confirmation password matches the original.
+
+    Attributes:
+        email: The email address that will be associated with the new user account.
+        password: The primary password used for authentication, subject to complexity validation.
+        confirm_password: A repeated password value that must match the primary password.
+    """
+    email: EmailStr
+    password: SecretStr = Field(min_length=8, max_length=30)
+    confirm_password: SecretStr = Field(min_length=8, max_length=30)
+
+    @classmethod
+    def password_type_checker(cls, password: str) -> None:
+        """Validates that a password string meets basic complexity requirements. This helper checks for the presence of digits, letter casing, and special characters.
+
+        The method raises a ValueError with a descriptive message when the supplied password does not satisfy any of the enforced rules.
+
+        Args:
+            password: The plain-text password string submitted by the user.
+
+        Raises:
+            ValueError: If the password lacks digits, lowercase letters, uppercase letters, or special characters.
+        """
+        if not any(pw.isdigit() for pw in password):
+            raise ValueError('Password must contain at least one digit')
+        if not any(pw.islower() for pw in password):
+            raise ValueError('Password must contain at least one lower case')
+        if not any(pw.isupper() for pw in password):
+            raise ValueError('Password must contain at least one uppercase')
+        if all(pw not in string.punctuation for pw in password):
+            raise ValueError('Password must contain at least one special character')
+
+    @field_validator("password")
+    @classmethod
+    def password_validation(cls, password: SecretStr) -> SecretStr:
+        """Applies server-side validation rules to a submitted password field. This validator ensures that any password assigned to the model satisfies the configured complexity checks.
+
+        The method delegates to the shared password_type_checker helper and returns the original SecretStr value if validation succeeds.
+
+        Args:
+            password: The secret password value provided in the registration payload.
+
+        Returns:
+            SecretStr: The same password value, returned after successful validation.
+
+        Raises:
+            ValueError: If the password does not meet the required complexity constraints.
+        """
+        get_password = password.get_secret_value()
+        RegisterUser.password_type_checker(get_password)
+        return password
+    
+    @model_validator(mode='after')
+    def check_passwords_match(self) -> 'RegisterUser':
+        """Ensures that the password and confirmation password fields contain the same value. This validator runs after field-level validation to enforce consistency between related fields.
+
+        If the two password fields disagree, the method raises a validation error to prevent creation of an inconsistent registration payload.
+
+        Returns:
+            RegisterUser: The validated model instance when both passwords match successfully.
+
+        Raises:
+            ValueError: If the password and confirm_password values are not identical.
+        """
+        password_value: str = self.password.get_secret_value()
+        confirm_password_value: str = self.confirm_password.get_secret_value()
+        if password_value != confirm_password_value:
+            raise ValueError('The password and confirm password did not match')
+        return self
+    class Config:
+        """Pydantic configuration for the RegisterUser model. This configuration defines how registration payloads can be populated from underlying data objects.
+
+        The current setup enables constructing the registration schema from ORM-like objects by reading their attributes directly.
 
         Attributes:
             from_attributes: Allows population of the model from object attributes instead of only dictionaries.

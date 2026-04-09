@@ -1,5 +1,55 @@
 from uuid import UUID
-from fastapi import status, HTTPException
+from fastapi import status, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+def _build_error_entry(error: dict) -> dict:
+    error_type = error.get("type", "")
+
+    raw_locations = error["loc"]
+    loc = [str(location) for location in raw_locations if location != "body"]
+
+    is_body_missing_or_invalid = (
+        error_type == "json_invalid"
+        or (error_type == "missing" and not loc)
+    )
+
+    if is_body_missing_or_invalid:
+        return {
+            "field": "body",
+            "message": "Request body is required and must be valid JSON",
+            "type": error_type,
+        }
+
+    field_name = " -> ".join(loc) if loc else "body"
+    error_message = error["msg"]
+    return {
+        "field": field_name,
+        "message": error_message,
+        "type": error_type,
+    }
+
+
+def _build_errors_from_exception(exc: Exception) -> list[dict]:
+    if not isinstance(exc, RequestValidationError):
+        return []
+    return [_build_error_entry(error) for error in exc.errors()]
+
+
+async def validation_exception_handler(_request: Request, exc: Exception):
+    errors = _build_errors_from_exception(exc)
+
+    final_errors = errors or [{"message": str(exc)}]
+
+    response_content = {
+        "detail": "Validation failed",
+        "errors": final_errors,
+    }
+
+    return JSONResponse(
+        status_code=422,
+        content=response_content,
+    )
 
 def jwt_validation_error_exception():
     """Creates an HTTP exception representing a failed JWT authentication attempt. This helper standardizes the error response for invalid or missing authentication credentials.
