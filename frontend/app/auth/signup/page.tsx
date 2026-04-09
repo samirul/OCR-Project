@@ -25,6 +25,8 @@ import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import GoogleLoginAuth from "@/components/auth/google-auth";
 import GithubLoginAuth from "@/components/auth/github-auth";
+import z from "zod";
+import { startTransition } from "react";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -41,8 +43,12 @@ export default function SignUpPage() {
     },
   });
 
-  function onSubmit() {
-    console.log("login success");
+  function onSubmit(data: z.infer<typeof signupSchema>) {
+    startTransition(async () => {
+      console.log(data.email)
+      console.log(data.password)
+      console.log(data.confirmPassword)
+    });
   }
   //Get login function for google login and github login.
   const { login } = GoogleLoginAuth();
