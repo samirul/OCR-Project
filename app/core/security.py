@@ -2,7 +2,7 @@
 
 from typing import Literal
 from datetime import datetime, timedelta, timezone
-from fastapi import Response
+from fastapi import HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -279,3 +279,21 @@ def generate_csrf_token(response: Response):
         samesite="strict",
         secure=True
     )
+
+def verify_csrf_token(request: Request):
+    """Validate that the CSRF token in the request headers matches the token stored in cookies. This function enforces CSRF protection by ensuring both tokens are present and identical.
+
+    When the tokens are missing or do not match, the function raises a 403 Forbidden error to block the potentially unsafe request.
+
+    Args:
+        request: The incoming HTTP request containing cookies and headers to validate.
+
+    Raises:
+        HTTPException: If the CSRF token is missing from either location or if the two tokens do not match.
+    """
+    cookie_token = request.cookies.get("csrf_token")
+    header_token = request.headers.get("X-CSRF-Token")
+    if not cookie_token or not header_token:
+        raise HTTPException(status_code=403, detail="CSRF token is missing")
+    if cookie_token != header_token:
+        raise HTTPException(status_code=403, detail="CSRF token is mismatch")
