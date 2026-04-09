@@ -1,3 +1,6 @@
+"""Pydantic schema for users"""
+
+
 from typing import Optional
 from pydantic import BaseModel
 
@@ -10,10 +13,12 @@ class User(BaseModel):
     Attributes:
         email: The user's email address used for identification and communication.
         username: The display name chosen by the user.
+        password: The user password.
         profile_picture: An optional URL or path to the user's profile image.
     """
     email: str
     username: str
+    password: str
     profile_picture: Optional[str] = None
 
     class Config:

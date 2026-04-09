@@ -1,9 +1,15 @@
+"""User related business logics"""
+
+import secrets
+import string
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
+from app.core.security import hash_password
 from app.src.users.models import User
 from app.src.users.schemas import UserCreate
 
+RANDOM_PASSWORD_LENGTH=12
 
 async def commit_to_db(db: AsyncSession, model_instance: User):
     """Persist a user model instance to the database and synchronize its state. This helper encapsulates the common pattern of adding, committing, and refreshing a user record.
@@ -53,8 +59,6 @@ async def check_user(db: AsyncSession, new_user: User):
     user = (await db.scalars(select(User).where(User.email == new_user.email))).first()
     if user is not None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{new_user.email} already exists.")
-
-
 async def check_user_id(db: AsyncSession, new_user: User):
     """Verify that a user's ID is unique before persisting or updating their record.
 
@@ -73,21 +77,35 @@ async def check_user_id(db: AsyncSession, new_user: User):
     if user_id is not None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{new_user.id} already exists.")
     
+def generate_random_passwords(password_range: int) -> str:
+    """Generate a random password string of the requested length. This helper uses a mix of letters, digits, and punctuation to create high-entropy passwords.
 
-def get_user_data_from_oauth(data: dict) -> UserCreate:
-    """Builds a user creation payload from generic OAuth profile data. This helper normalizes fields from different OAuth providers into the application's UserCreate schema.
-
-    The function extracts core identity attributes such as email, display name, and profile picture URL, preferring available values across provider-specific keys.
+    The function randomly selects characters from the combined alphabet until the specified length is reached.
 
     Args:
-        data: A dictionary of user profile attributes returned by an OAuth provider, such as Google or GitHub.
+        password_range: The desired length of the generated password.
 
     Returns:
-        UserCreate: A populated user creation schema ready to be used for user persistence or lookup.
+        str: A randomly generated password string of the requested length.
+    """
+    alphabet = string.ascii_letters + string.digits + string.punctuation
+    return ''.join(secrets.choice(alphabet) for _ in range(password_range))
+
+def get_user_data_from_oauth(data: dict) -> UserCreate:
+    """Build a user creation payload from OAuth provider profile data. This function normalizes external OAuth fields into the internal UserCreate schema.
+
+    The function extracts core identity attributes such as email, display name, and profile image, while generating a secure random password for the new user.
+
+    Args:
+        data: The raw profile data dictionary returned by an OAuth provider.
+
+    Returns:
+        UserCreate: A populated user creation schema derived from the OAuth profile.
     """
     return UserCreate(
         email=data["email"],
         username=data["name"] or data["login"],
+        password=hash_password(generate_random_passwords(int(RANDOM_PASSWORD_LENGTH))),
         profile_picture=data.get("picture") or data.get("avatar_url")
     )
 
@@ -110,3 +128,41 @@ async def create_user_oauth(db: AsyncSession, user: UserCreate):
         await commit_to_db(db,new_user)
         return new_user
     return user
+
+async def get_user_data(data: dict) -> UserCreate:
+    """Build a user creation payload from raw registration data. This helper normalizes input fields into the internal UserCreate schema used for persistence.
+
+    The function extracts the core identity attributes and hashes the provided plain-text password before constructing the schema.
+
+    Args:
+        data: The raw registration data dictionary containing email, username, and password keys.
+
+    Returns:
+        UserCreate: A populated user creation schema ready to be stored in the database.
+    """
+    return UserCreate(
+        email=data["email"],
+        username=data["username"],
+        password=hash_password(data["password"])
+    )
+
+
+async def create_user(db: AsyncSession, user: UserCreate):
+    """Create a new user from validated registration data. This function enforces uniqueness checks and persists the user to the database.
+
+    The function constructs a User model instance, verifies that both email and ID are not already in use, and then commits the new record.
+
+    Args:
+        db: The active database AsyncSession used to query and persist user records.
+        user: The validated user creation payload containing registration details.
+
+    Returns:
+        None: This function performs database side effects and does not return a value.
+
+    Raises:
+        HTTPException: If a user with the same email or ID already exists.
+    """
+    new_user = User(**user.model_dump())
+    await check_user(db,new_user)
+    await check_user_id(db,new_user)
+    await commit_to_db(db,new_user)

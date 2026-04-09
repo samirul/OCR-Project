@@ -40,6 +40,10 @@ class User(Base):
         String, nullable=False, unique=True
     )
 
+    password: Mapped[str] = mapped_column(
+        String, nullable=False
+    )
+
     is_admin: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,

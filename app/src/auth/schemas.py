@@ -1,4 +1,5 @@
 """Pydantic schema for authentications"""
+
 import string
 from pydantic import BaseModel, EmailStr, Field, SecretStr, field_validator, model_validator
 
@@ -105,10 +106,12 @@ class RegisterUser(BaseModel):
 
     Attributes:
         email: The email address that will be associated with the new user account.
+        username: The display name or handle chosen by the user.
         password: The primary password used for authentication, subject to complexity validation.
         confirm_password: A repeated password value that must match the primary password.
     """
     email: EmailStr
+    username: str
     password: SecretStr = Field(min_length=8, max_length=30)
     confirm_password: SecretStr = Field(min_length=8, max_length=30)
 
@@ -174,6 +177,34 @@ class RegisterUser(BaseModel):
         """Pydantic configuration for the RegisterUser model. This configuration defines how registration payloads can be populated from underlying data objects.
 
         The current setup enables constructing the registration schema from ORM-like objects by reading their attributes directly.
+
+        Attributes:
+            from_attributes: Allows population of the model from object attributes instead of only dictionaries.
+        """
+        from_attributes = True
+
+class ShowStatus(BaseModel):
+    """Represents a simple status message payload used in authentication responses. This model provides a lightweight way to convey human-readable outcome messages to clients.
+
+    The schema is typically wrapped inside higher-level response objects to indicate success or failure of an operation.
+
+    Attributes:
+        msg: The human-readable status or informational message to be returned to the client.
+    """
+    msg: str
+class RegisterUserResponseOut(BaseModel):
+    """Defines the response structure returned after a successful user registration. This model wraps a simple status payload to communicate the outcome of the registration process.
+
+    The response is intended to provide clients with a clear, human-readable confirmation message rather than exposing full user details.
+
+    Attributes:
+        data: The status payload containing a message about the registration result.
+    """
+    data: ShowStatus
+    class Config:
+        """Pydantic configuration for the RegisterUserResponseOut model. This configuration specifies how response objects are created from underlying data sources.
+
+        The current setup enables constructing the response from ORM-like objects by reading their attributes directly.
 
         Attributes:
             from_attributes: Allows population of the model from object attributes instead of only dictionaries.

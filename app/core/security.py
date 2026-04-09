@@ -2,6 +2,7 @@
 
 from typing import Literal
 from datetime import datetime, timedelta, timezone
+from passlib.context import CryptContext
 from fastapi import HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
@@ -14,12 +15,13 @@ from app.core.schemas import BlackListData, TokenData
 from app.src.users.models import User
 from app.src.auth.models import BlackListedTokens
 
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = jwt_configs_settings.secret_key
 ALGORITHM = jwt_configs_settings.jwt_algorithm
 ACCESS_TOKEN_EXPIRE_MINUTES = int(jwt_configs_settings.jwt_expiration_minutes)
 SameSitePolicy = Literal["lax", "strict", "none"]
 url_safe_serializer = URLSafeTimedSerializer(SECRET_KEY)
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def create_access_token(data: dict, token_type: str):
@@ -297,3 +299,31 @@ def verify_csrf_token(request: Request):
         raise HTTPException(status_code=403, detail="CSRF token is missing")
     if cookie_token != header_token:
         raise HTTPException(status_code=403, detail="CSRF token is mismatch")
+    
+
+def hash_password(password: str) -> str:
+    """Hash a plain-text password using the configured password hashing context. This helper ensures that raw passwords are never stored or transmitted in plain text.
+
+    The function applies a one-way hashing algorithm and returns the resulting hash string for safe storage.
+
+    Args:
+        password: The plain-text password that needs to be securely hashed.
+
+    Returns:
+        str: The hashed representation of the provided password.
+    """
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify that a plain-text password matches a stored hashed password. This helper is used during authentication to confirm user-provided credentials.
+
+    The function compares the raw password against the hash using the configured password hashing context and returns whether they match.
+
+    Args:
+        plain_password: The plain-text password supplied by the user during login.
+        hashed_password: The previously stored hashed password retrieved from persistence.
+
+    Returns:
+        bool: True if the plain password corresponds to the hash, otherwise False.
+    """
+    return pwd_context.verify(plain_password, hashed_password)

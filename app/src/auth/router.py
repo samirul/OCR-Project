@@ -1,14 +1,14 @@
 """Router for social authentication and authentication"""
 
 import logging
-from fastapi import APIRouter, Depends, Response, Request
+from fastapi import APIRouter, Depends, Response, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_db
-from app.core.security import fetch_new_tokens, generate_csrf_token
+from app.core.security import fetch_new_tokens, generate_csrf_token, verify_csrf_token
 from app.src.auth.service import github_login_user, validate_google_token_and_extract_user_info, return_tokens_and_credentials
-from app.src.auth.schemas import GoogleAuthCode, GithubAuthCode ,GoogleLoginResponseOut, GithubLoginResponseOut, ResponseTokenOut
+from app.src.auth.schemas import GoogleAuthCode, GithubAuthCode ,GoogleLoginResponseOut, GithubLoginResponseOut, RegisterUserResponseOut, ResponseTokenOut, RegisterUser, ShowStatus
 from app.core.deploy_checker import deploy_checker_auth_services
-from app.src.users.service import get_user_data_from_oauth, create_user_oauth
+from app.src.users.service import create_user, get_user_data, get_user_data_from_oauth, create_user_oauth
 
 config = deploy_checker_auth_services()
 logger = logging.getLogger(__name__)
@@ -57,6 +57,25 @@ async def github_login(response: Response, body: GithubAuthCode, db: AsyncSessio
     return await return_tokens_and_credentials(
         response= response, data={"id": str(data.id), "email": str(data.email)}
     )
+
+@router_auth.post('/register', status_code=status.HTTP_201_CREATED, response_model=RegisterUserResponseOut, dependencies=[Depends(verify_csrf_token)])
+async def register_user(body: RegisterUser, db: AsyncSession = Depends(get_db)):
+    """Register a new user account using the provided credentials. This endpoint validates the registration payload, creates the user, and returns a human-readable status message.
+
+    The function hashes the submitted password, persists the new user record after uniqueness checks, and relies on CSRF protection to secure the registration request.
+
+    Args:
+        body: The validated registration payload containing email, username, and password fields.
+        db: The database session used to create and persist the new user.
+
+    Returns:
+        RegisterUserResponseOut: A response object containing a status message about the registration outcome.
+    """
+    serialized_data = await get_user_data({"email": body.email,
+    "username": body.username, "password": body.password.get_secret_value()})
+    await create_user(db, serialized_data)
+    return RegisterUserResponseOut(
+        data=ShowStatus(msg="Registration is successful, please verify in your email."))
 
 @router_auth.post('/refresh', response_model=ResponseTokenOut)
 async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
