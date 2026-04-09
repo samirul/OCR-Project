@@ -26,9 +26,11 @@ import { FaGithub } from "react-icons/fa";
 import GoogleLoginAuth from "@/components/auth/google-auth";
 import GithubLoginAuth from "@/components/auth/github-auth";
 import z from "zod";
-import { startTransition } from "react";
+import { useTransition } from "react";
+import { Loader2 } from "lucide-react";
 
 export default function SignUpPage() {
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
   // Redirect to login page if already registered.
   function redirectToLoginPage() {
@@ -132,8 +134,15 @@ export default function SignUpPage() {
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full cursor-pointer">
-              Register
+            <Button type="submit" className="w-full cursor-pointer" disabled={isPending}>
+              {isPending ? (
+                <>
+                  <Loader2 className="size-4 mr-1.5 animate-spin text-white" />
+                  <span>Loading...</span>
+                </>
+              ) : (
+                <span>Register</span>
+              )}
             </Button>
           </FieldGroup>
         </form>
