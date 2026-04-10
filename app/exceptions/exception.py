@@ -1,9 +1,21 @@
+"""Custom exception logics"""
+
 from uuid import UUID
 from fastapi import status, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 def _build_error_entry(error: dict) -> dict:
+    """Builds a normalized error description from a raw validation error entry. This helper converts internal validation details into a client-facing error structure.
+
+    The function identifies special cases such as missing or invalid JSON bodies and produces a consistent shape for error reporting.
+
+    Args:
+        error: A dictionary containing raw validation error details, including location, type, and message.
+
+    Returns:
+        dict: A standardized error dictionary with `field`, `message`, and `type` keys.
+    """
     error_type = error.get("type", "")
 
     raw_locations = error["loc"]
@@ -31,12 +43,33 @@ def _build_error_entry(error: dict) -> dict:
 
 
 def _build_errors_from_exception(exc: Exception) -> list[dict]:
+    """Builds a list of normalized error entries from a validation exception. This helper converts FastAPI request validation errors into a consistent error structure.
+
+    The function only processes `RequestValidationError` instances and returns an empty list for all other exception types.
+
+    Args:
+        exc: The exception instance that may contain request validation errors.
+
+    Returns:
+        list[dict]: A list of standardized error dictionaries derived from the exception, or an empty list if the exception is not a `RequestValidationError`.
+    """
     if not isinstance(exc, RequestValidationError):
         return []
     return [_build_error_entry(error) for error in exc.errors()]
 
 
 async def validation_exception_handler(_request: Request, exc: Exception):
+    """Handles validation-related exceptions and formats them into a standardized JSON response. This handler ensures clients receive consistent error details for invalid requests.
+
+    The function extracts structured validation errors when available, or falls back to a simple error message representation of the exception.
+
+    Args:
+        _request: The incoming HTTP request that triggered the validation error.
+        exc: The exception instance raised during request validation.
+
+    Returns:
+        JSONResponse: A response with a 422 status code and a body containing a general detail message and a list of error entries.
+    """
     errors = _build_errors_from_exception(exc)
 
     final_errors = errors or [{"message": str(exc)}]
