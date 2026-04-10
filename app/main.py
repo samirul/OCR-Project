@@ -1,9 +1,9 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from app.exceptions.exception import validation_exception_handler
+from app.exceptions.exception import http_exception_handler, validation_exception_handler
 # from app.api.v1.api_router import v1_router
 
 from app.api.auth.api_router import  router as user_router
@@ -12,6 +12,7 @@ from app.api.auth.api_router import  router as user_router
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key=str(os.environ.get('SECRET_KEY')))
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
 
 origins = ["http://localhost:3000", "localhost:3000"]
 

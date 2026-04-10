@@ -84,6 +84,47 @@ async def validation_exception_handler(_request: Request, exc: Exception):
         content=response_content,
     )
 
+async def http_exception_handler(request: Request, exc: Exception):
+    """Handles HTTP and unexpected exceptions by returning a structured JSON response. This handler ensures clients always receive a consistent error format for both known and internal errors.
+
+    For recognized `HTTPException` instances, the function mirrors the original status code and detail, while unknown exceptions are mapped to a 500 Internal Server Error with a generic message.
+
+    Args:
+        request: The incoming HTTP request associated with the exception.
+        exc: The exception instance that was raised during request processing.
+
+    Returns:
+        JSONResponse: A JSON response containing a detail message and a list of standardized error entries.
+    """
+    if isinstance(exc, HTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "detail": exc.detail,
+                "errors": [
+                    {
+                        "field": "general",
+                        "message": exc.detail,
+                        "type": "http_exception"
+                    }
+                ]
+            }
+        )
+    # Fallback for other exceptions
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "errors": [
+                {
+                    "field": "general",
+                    "message": str(exc),
+                    "type": "internal_error"
+                }
+            ]
+        }
+    )
+
 def jwt_validation_error_exception():
     """Creates an HTTP exception representing a failed JWT authentication attempt. This helper standardizes the error response for invalid or missing authentication credentials.
 

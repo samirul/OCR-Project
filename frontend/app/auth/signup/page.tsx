@@ -30,6 +30,7 @@ import { useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import axios, { AxiosResponse } from "axios";
 import { getCookie } from 'cookies-next';
+import { toast } from "sonner";
 
 export default function SignUpPage() {
   // loading transition
@@ -70,20 +71,24 @@ export default function SignUpPage() {
             },
           }
         );
+        toast.success(response?.data.data.msg) // toast success
       }catch(error){
         if (axios.isAxiosError(error)) {
           const status = error.response?.status; //Get error status code.
+          const toastError = error.response?.data.errors[0]?.message;
+          toast.error(toastError); // toast error
           const message = error.response?.data; //Get error messages.
-          console.error("Data fetching error:", {
-            status,
-            message,
-          });
+          // console.error("Data fetching error:", {
+          //   status,
+          //   message,
+          // });
           if (status === 400 || status === 401 || status === 500 || status === 403) {
-            router.push("/auth/register"); //Redirect to register page.
+            router.push("/auth/signup"); //Redirect to register page.
           }
         } else {
-          console.error("Unexpected error redirected to register page:", error);
-          router.push("/auth/register"); //Redirect to register page.
+          toast.error("Something unexpected happened, redirected to signup page"); // toast error
+          // console.error("Unexpected error redirected to signup page:", error);
+          router.push("/auth/signup"); //Redirect to register page.
         }
       }
     });
@@ -115,7 +120,7 @@ export default function SignUpPage() {
                       <FieldLabel>Username</FieldLabel>
                       <Input
                         aria-invalid={fieldState.invalid}
-                        placeholder=""
+                        placeholder="JohnDoe"
                         {...field}
                       />
                       {fieldState.invalid && (
@@ -155,7 +160,7 @@ export default function SignUpPage() {
                     <Field>
                       <Input
                         aria-invalid={fieldState.invalid}
-                        placeholder=""
+                        placeholder="*********"
                         type="password"
                         {...field}
                       />
@@ -177,7 +182,7 @@ export default function SignUpPage() {
                     <Field>
                       <Input
                         aria-invalid={fieldState.invalid}
-                        placeholder=""
+                        placeholder="*********"
                         type="password"
                         {...field}
                       />
