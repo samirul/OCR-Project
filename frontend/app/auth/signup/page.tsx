@@ -25,20 +25,25 @@ import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 import GoogleLoginAuth from "@/components/auth/google-auth";
 import GithubLoginAuth from "@/components/auth/github-auth";
-import z from "zod";
+import z, { email } from "zod";
 import { useTransition } from "react";
 import { Loader2 } from "lucide-react";
+import axios, { AxiosResponse } from "axios";
+import { getCookie } from 'cookies-next';
 
 export default function SignUpPage() {
+  // loading transition
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   // Redirect to login page if already registered.
   function redirectToLoginPage() {
     router.push("/auth/login");
   }
+  // zod form
   const form = useForm({
     resolver: zodResolver(signupSchema),
     defaultValues: {
+      username: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -47,14 +52,45 @@ export default function SignUpPage() {
 
   function onSubmit(data: z.infer<typeof signupSchema>) {
     startTransition(async () => {
-      console.log(data.email)
-      console.log(data.password)
-      console.log(data.confirmPassword)
+      try{
+        const csrf_token = await getCookie('csrf_token');
+        const response: AxiosResponse = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/user/auth/register`,
+          { email: data.email,
+            username: data.username,
+            password: data.password,
+            confirm_password: data.confirmPassword
+          },
+          {
+            withCredentials: true,
+            headers: {
+              'X-CSRF-Token': csrf_token,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          }
+        );
+      }catch(error){
+        if (axios.isAxiosError(error)) {
+          const status = error.response?.status; //Get error status code.
+          const message = error.response?.data; //Get error messages.
+          console.error("Data fetching error:", {
+            status,
+            message,
+          });
+          if (status === 400 || status === 401 || status === 500 || status === 403) {
+            router.push("/auth/register"); //Redirect to register page.
+          }
+        } else {
+          console.error("Unexpected error redirected to register page:", error);
+          router.push("/auth/register"); //Redirect to register page.
+        }
+      }
     });
   }
   //Get login function for google login and github login.
   const { login } = GoogleLoginAuth();
-  const {initiateGitHubLogin, isLoading} = GithubLoginAuth();
+  const { initiateGitHubLogin, isLoading } = GithubLoginAuth();
 
   return (
     <Card className="w-full max-w-md shadow-lg lg:mt-0 md:mt-0 mt-20">
@@ -70,6 +106,25 @@ export default function SignUpPage() {
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <FieldGroup className="gap-y-4">
             <div className="flex flex-col gap-5">
+              <div className="grid gap-2">
+                <Controller
+                  name="username"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field>
+                      <FieldLabel>Username</FieldLabel>
+                      <Input
+                        aria-invalid={fieldState.invalid}
+                        placeholder=""
+                        {...field}
+                      />
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+              </div>
               <div className="grid gap-2">
                 <Controller
                   name="email"
@@ -134,7 +189,11 @@ export default function SignUpPage() {
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full cursor-pointer" disabled={isPending}>
+            <Button
+              type="submit"
+              className="w-full cursor-pointer"
+              disabled={isPending}
+            >
               {isPending ? (
                 <>
                   <Loader2 className="size-4 mr-1.5 animate-spin text-white" />
@@ -157,11 +216,20 @@ export default function SignUpPage() {
             Already created your account?
           </Button>
         </CardAction>
-        <Button variant="outline" className="w-full cursor-pointer" onClick={login}>
+        <Button
+          variant="outline"
+          className="w-full cursor-pointer"
+          onClick={login}
+        >
           <FcGoogle className="relative right-2 size-5" />
           Login with Google
         </Button>
-        <Button variant="outline" className="w-full cursor-pointer" onClick={initiateGitHubLogin} disabled={isLoading}>
+        <Button
+          variant="outline"
+          className="w-full cursor-pointer"
+          onClick={initiateGitHubLogin}
+          disabled={isLoading}
+        >
           <FaGithub className="relative right-2 size-5" />
           Login with Github
         </Button>

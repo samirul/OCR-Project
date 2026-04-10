@@ -279,7 +279,8 @@ def generate_csrf_token(response: Response):
         value=new_csrf_token,
         httponly=False,
         samesite="strict",
-        secure=True
+        secure=True,
+        path="/"
     )
 
 def verify_csrf_token(request: Request):
