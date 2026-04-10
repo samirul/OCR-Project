@@ -42,7 +42,7 @@ async def check_user_oauth(db: AsyncSession, new_user: User):
     """
     return (await db.scalars(select(User).where(User.email == new_user.email))).first()
 
-async def check_user(db: AsyncSession, new_user: User):
+async def check_user_email(db: AsyncSession, new_user: User):
     """Ensure that a user's email address is unique before creating or updating a record.
 
     This function checks for an existing user with the same email and prevents
@@ -56,9 +56,29 @@ async def check_user(db: AsyncSession, new_user: User):
         HTTPException: Raised with a 403 status code if a user with the same email
             already exists in the database.
     """
-    user = (await db.scalars(select(User).where(User.email == new_user.email))).first()
-    if user is not None:
+    user_email = (await db.scalars(select(User).where(User.email == new_user.email))).first()
+    if user_email is not None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{new_user.email} already exists.")
+    
+async def check_user_name(db: AsyncSession, new_user: User):
+    """Ensure that a user's username is unique before creating or updating a record. This function prevents duplicate usernames by validating against existing records.
+
+    The function queries the database for a user with the same username and raises an HTTP 403 error if a conflict is detected.
+
+    Args:
+        db: The active database AsyncSession used to perform the lookup.
+        new_user: The user instance whose username should be validated for uniqueness.
+
+    Raises:
+        HTTPException: Raised with a 403 status code if a user with the same username
+            already exists in the database.
+    """
+    user_name = (await db.scalars(select(User).where(User.username == new_user.username))).first()
+    if user_name is not None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{new_user.username} already exists.")
+    
+
+
 async def check_user_id(db: AsyncSession, new_user: User):
     """Verify that a user's ID is unique before persisting or updating their record.
 
@@ -163,6 +183,7 @@ async def create_user(db: AsyncSession, user: UserCreate):
         HTTPException: If a user with the same email or ID already exists.
     """
     new_user = User(**user.model_dump())
-    await check_user(db,new_user)
+    await check_user_email(db,new_user)
     await check_user_id(db,new_user)
+    await check_user_name(db, new_user)
     await commit_to_db(db,new_user)
