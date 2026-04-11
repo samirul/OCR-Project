@@ -1,5 +1,6 @@
 """Related to JWT and password logics"""
 
+import logging
 from typing import Literal
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
@@ -23,6 +24,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(jwt_configs_settings.jwt_expiration_minutes)
 SameSitePolicy = Literal["lax", "strict", "none"]
 url_safe_serializer = URLSafeTimedSerializer(SECRET_KEY)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+logging.getLogger('passlib').setLevel(logging.ERROR) # fix for bcrypt error log
 
 def create_access_token(data: dict, token_type: str):
     """Creates a short-lived JWT access token from the provided payload data. This token is used to authenticate and authorize subsequent client requests.

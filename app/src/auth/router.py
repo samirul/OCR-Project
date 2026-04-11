@@ -4,7 +4,7 @@ import logging
 from fastapi import APIRouter, Depends, Response, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_db
-from app.core.security import fetch_new_tokens, generate_csrf_token, verify_csrf_token
+from app.core.security import fetch_new_tokens, verify_csrf_token
 from app.src.auth.service import github_login_user, validate_google_token_and_extract_user_info, return_tokens_and_credentials
 from app.src.auth.schemas import GoogleAuthCode, GithubAuthCode ,GoogleLoginResponseOut, GithubLoginResponseOut, RegisterUserResponseOut, ResponseTokenOut, RegisterUser, ShowStatus
 from app.core.deploy_checker import deploy_checker_auth_services
@@ -32,7 +32,6 @@ async def google_login(response: Response, body: GoogleAuthCode, db: AsyncSessio
     user = validate_google_token_and_extract_user_info(body)
     serialized_data = get_user_data_from_oauth(user)
     data = await create_user_oauth(db, serialized_data)
-    generate_csrf_token(response)
     return await return_tokens_and_credentials(
         response= response, data={"id": str(data.id), "email": str(data.email)}
     )
@@ -50,7 +49,6 @@ async def github_login(response: Response, body: GithubAuthCode, db: AsyncSessio
     Returns:
         GithubLoginResponseOut: The issued access and refresh tokens, plus user identification data.
     """
-    generate_csrf_token(response)
     user = await github_login_user(body.code)
     serialized_data = get_user_data_from_oauth(user)
     data = await create_user_oauth(db, serialized_data)

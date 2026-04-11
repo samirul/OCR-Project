@@ -26,7 +26,7 @@ import { FaGithub } from "react-icons/fa";
 import GoogleLoginAuth from "@/components/auth/google-auth";
 import GithubLoginAuth from "@/components/auth/github-auth";
 import z, { email } from "zod";
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import axios, { AxiosResponse } from "axios";
 import { getCookie } from 'cookies-next';
@@ -50,6 +50,20 @@ export default function SignUpPage() {
       confirmPassword: "",
     },
   });
+
+  // ── Fetch CSRF token when page loads ──
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        await axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/csrf/new/csrf_token/`, {
+          withCredentials: true,
+        });
+      } catch (error) {
+        console.error("Failed to fetch CSRF token:", error);
+      }
+    };
+    fetchCsrfToken();
+  }, []);
 
   function onSubmit(data: z.infer<typeof signupSchema>) {
     startTransition(async () => {

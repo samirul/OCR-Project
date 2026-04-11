@@ -7,9 +7,9 @@ from app.exceptions.exception import http_exception_handler, validation_exceptio
 # from app.api.v1.api_router import v1_router
 
 from app.api.auth.api_router import  router as user_router
+from app.api.csrf.api_router import router as csrf_router
 
-
-app = FastAPI()
+app = FastAPI(docs_url=None, redoc_url=None)
 app.add_middleware(SessionMiddleware, secret_key=str(os.environ.get('SECRET_KEY')))
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
@@ -26,6 +26,7 @@ app.add_middleware(
 
 # app.include_router(v1_router, prefix="/api/v1")
 app.include_router(user_router, prefix="/api/user")
+app.include_router(csrf_router, prefix="/api/csrf")
 
 @app.get("/")
 async def root():
