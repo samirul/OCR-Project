@@ -66,9 +66,10 @@ export default function SignUpPage() {
   }, []);
 
   function onSubmit(data: z.infer<typeof signupSchema>) {
-    startTransition(async () => {
+    startTransition(async () => { // loading animation in submit button
       try{
-        const csrf_token = await getCookie('csrf_token');
+        const csrf_token = await getCookie('csrf_token'); // fetch csrf token for signup
+        // send form data to backend
         const response: AxiosResponse = await axios.post(
           `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/user/auth/register`,
           { email: data.email,
@@ -77,9 +78,9 @@ export default function SignUpPage() {
             confirm_password: data.confirmPassword
           },
           {
-            withCredentials: true,
+            withCredentials: true, // send required token from cookie automatically
             headers: {
-              'X-CSRF-Token': csrf_token,
+              'X-CSRF-Token': csrf_token, // send csrf token
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
